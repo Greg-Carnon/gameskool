@@ -4,8 +4,48 @@
   <meta charset="utf-8">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0b0d14">
   <title>Jack vs Slop</title>
-  <style>body{margin:0;background:#0b0d14;color:#e8ecf3;font:18px system-ui;display:grid;place-items:center;min-height:100vh}</style>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b0d14; overflow: hidden; overscroll-behavior: none; }
+    body { font-family: system-ui, -apple-system, sans-serif; color: #eef1f6; -webkit-user-select: none; user-select: none; }
+    canvas { display: block; position: fixed; inset: 0; }
+    .overlay { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; background: rgba(11, 13, 20, 0.8); padding: 24px; }
+    .overlay[hidden] { display: none; }
+    h1 { font-size: 40px; margin: 0 0 8px; letter-spacing: -0.02em; }
+    p { margin: 6px 0; font-size: 17px; opacity: 0.85; line-height: 1.4; }
+    .big { font-size: 56px; font-weight: 700; margin: 8px 0; }
+    .level { color: #5cf2a0; font-weight: 700; font-size: 22px; }
+    .reason { color: #ff8a8a; }
+    button { margin-top: 20px; font: inherit; font-size: 20px; padding: 14px 32px; border-radius: 12px; border: 0; background: #5cf2a0; color: #08110c; font-weight: 700; }
+    .hud { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 20px; font-size: 20px; font-weight: 700; pointer-events: none; }
+    .hud .combo { color: #5cf2a0; }
+    .hud .strikes { letter-spacing: 3px; color: #ff8a8a; }
+  </style>
 </head>
-<body><p>Jack vs Slop: Prototyp folgt.</p><script type="module" src="/src/jack-vs-slop/main.ts"></script></body>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud"><span id="score">0</span><span class="combo" id="combo"></span><span class="strikes" id="strikes">●●●</span></div>
+  <div id="start" class="overlay">
+    <div>
+      <h1>Jack vs Slop</h1>
+      <p>UI components are falling into your website.</p>
+      <p><strong>Tap the slop</strong> to throw it out.<br>Let the clean design through.</p>
+      <p>Three mistakes and the site is slop.</p>
+      <button id="startBtn">Tap to play</button>
+    </div>
+  </div>
+  <div id="over" class="overlay" hidden>
+    <div>
+      <p>Game over</p>
+      <div class="big" id="finalScore">0</div>
+      <div class="level" id="level"></div>
+      <p class="reason" id="reason"></p>
+      <p id="siteInfo"></p>
+      <p id="nearMiss"></p>
+      <button id="againBtn">One more go</button>
+    </div>
+  </div>
+  <script type="module" src="/src/jack-vs-slop/main.ts"></script>
+</body>
 </html>
