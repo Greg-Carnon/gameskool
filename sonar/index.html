@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#020a12">
+  <title>Sonar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink:#020a12; --teal:#7ff5e6; --paper:#e6fbf8; }
+    html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; overscroll-behavior: none; }
+    body { font-family: Inter, system-ui, sans-serif; color: var(--paper); -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+    canvas { display: block; position: fixed; inset: 0; }
+    .overlay { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; background: rgba(2, 10, 18, 0.7); padding: 24px; z-index: 10; }
+    .overlay[hidden] { display: none; }
+    .card { max-width: 320px; }
+    h1 { font-size: 34px; font-weight: 800; letter-spacing: 0.42em; margin: 0 0 14px; padding-left: 0.42em; color: var(--teal); text-shadow: 0 0 24px rgba(127,245,230,0.6); }
+    p { margin: 8px 0; font-size: 16px; line-height: 1.45; opacity: 0.9; }
+    p b { color: var(--teal); }
+    .big { font-size: 60px; font-weight: 800; line-height: 1; margin: 6px 0; }
+    .cause { color: #ff8a8a; font-weight: 600; }
+    button { margin-top: 18px; font: inherit; font-weight: 800; font-size: 18px; padding: 12px 34px; border-radius: 999px; border: 2px solid var(--teal); background: transparent; color: var(--teal); box-shadow: 0 0 24px rgba(127,245,230,0.25); }
+    button:active { background: var(--teal); color: var(--ink); }
+    .hud { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 14px; right: 14px; display: flex; align-items: center; gap: 12px; pointer-events: none; z-index: 5; }
+    .bar { flex: 1; height: 10px; border-radius: 999px; background: rgba(127,245,230,0.12); overflow: hidden; }
+    .bar div { height: 100%; width: 100%; background: var(--teal); border-radius: 999px; transition: width .2s linear, background .3s; }
+    .lbl { font-size: 11px; font-weight: 800; letter-spacing: 0.2em; opacity: 0.7; }
+    .pill { font-weight: 800; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud"><span class="lbl">O₂</span><div class="bar"><div id="o2"></div></div><span class="pill" id="score">0</span></div>
+  <div id="start" class="overlay">
+    <div class="card">
+      <h1>SONAR</h1>
+      <p>It is dark down here.</p>
+      <p><b>Tap</b> to dive there. Every tap sends a ping that shows what is around you, for a second.</p>
+      <p>Pings cost oxygen. Pearls give it back. Mines tick when you are close.</p>
+      <button id="startBtn">Dive</button>
+    </div>
+  </div>
+  <div id="over" class="overlay" hidden>
+    <div class="card">
+      <div class="big" id="finalScore">0</div>
+      <p class="cause" id="cause"></p>
+      <p id="pearlLine"></p>
+      <p id="bestLine"></p>
+      <button id="againBtn">Dive again</button>
+    </div>
+  </div>
+  <script type="module" src="/src/sonar/main.ts"></script>
+</body>
+</html>

@@ -6,15 +6,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>GameSkool</title>
   <style>
-    body{margin:0;background:#0b0d14;color:#e8ecf3;font:18px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh}
-    a{color:#7cc4ff;display:block;padding:12px 0}
+    body{margin:0;background:#0b0d14;color:#e8ecf3;font:17px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px;box-sizing:border-box}
+    main{max-width:420px;width:100%}
+    h1{font-size:28px;margin:0 0 6px} .sub{opacity:.6;margin:0 0 20px;font-size:14px}
+    a{display:flex;justify-content:space-between;align-items:center;color:inherit;text-decoration:none;padding:16px 18px;border-radius:14px;background:#141826;margin-bottom:10px;border:1px solid rgba(255,255,255,.06)}
+    a b{display:block} a small{opacity:.6;font-size:13px} a span.tag{font-size:11px;font-weight:700;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08)}
   </style>
 </head>
 <body>
   <main>
     <h1>GameSkool</h1>
-    <a href="/blitzableiter/">Blitzableiter</a>
-    <a href="/jack-vs-slop/">Jack vs Slop</a>
+    <p class="sub">Six first versions. Play on your phone, portrait.</p>
+    <a href="/jack-vs-slop/"><div><b>Jack vs Slop</b><small>Tap the slop. Keep the clean design.</small></div><span class="tag">v2</span></a>
+    <a href="/blitzableiter/"><div><b>Blitzableiter</b><small>Plant rods. Chain the lightning.</small></div><span class="tag">v2</span></a>
+    <a href="/echo/"><div><b>Echo</b><small>Every death stays on the track.</small></div><span class="tag">v1</span></a>
+    <a href="/zeitfinger/"><div><b>Zeitfinger</b><small>Time moves only while you hold.</small></div><span class="tag">v1</span></a>
+    <a href="/sonar/"><div><b>Sonar</b><small>Ping to see. Seeing costs air.</small></div><span class="tag">v1</span></a>
+    <a href="/dungeon-deal/"><div><b>Dungeon Deal</b><small>One more card, or leave with the gold?</small></div><span class="tag">v1</span></a>
   </main>
 </body>
 </html>

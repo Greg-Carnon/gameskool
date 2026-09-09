@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1b1035">
+  <title>Echo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Caveat:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink:#1b1035; --paper:#fff4e6; --orange:#ff9a5c; --cyan:#7ad7ff; }
+    html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; overscroll-behavior: none; }
+    body { font-family: Fredoka, system-ui, sans-serif; color: var(--paper); -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+    canvas { display: block; position: fixed; inset: 0; }
+    .overlay { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; background: rgba(27, 16, 53, 0.55); padding: 24px; z-index: 10; }
+    .overlay[hidden] { display: none; }
+    .card { max-width: 330px; background: var(--paper); color: var(--ink); border-radius: 22px; padding: 26px 22px; box-shadow: 0 10px 0 rgba(0,0,0,0.25); }
+    h1 { font-family: Caveat, cursive; font-size: 64px; margin: 0; line-height: 0.9; color: var(--orange); text-shadow: 3px 3px 0 var(--ink); transform: rotate(-3deg); }
+    p { margin: 10px 0 0; font-size: 17px; line-height: 1.4; font-weight: 500; }
+    p b { color: #0d7fb0; }
+    .big { font-size: 54px; font-weight: 700; margin: 6px 0 0; line-height: 1; }
+    .cause { color: #0d7fb0; font-weight: 700; }
+    button { margin-top: 18px; font: inherit; font-weight: 700; font-size: 20px; padding: 12px 30px; border-radius: 999px; border: 0; background: var(--orange); color: var(--ink); box-shadow: 0 6px 0 #c9673a; transition: transform .08s, box-shadow .08s; }
+    button:active { transform: translateY(4px); box-shadow: 0 2px 0 #c9673a; }
+    button.ghost { background: transparent; box-shadow: none; color: #0d7fb0; font-size: 15px; margin-top: 8px; padding: 6px; }
+    .hud { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 14px; pointer-events: none; z-index: 5; }
+    .pill { background: rgba(27,16,53,0.55); border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 18px; }
+    .pill.small { font-size: 13px; font-weight: 500; opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud"><span class="pill" id="dist">0 m</span><span class="pill small" id="run"></span></div>
+  <div id="start" class="overlay">
+    <div class="card">
+      <h1>Echo</h1>
+      <p><b>Tap</b> to jump. Hold to jump higher.</p>
+      <p>Every time you die, your <b>echo</b> stays on the track. Forever. Today.</p>
+      <p>Same track all day. Don't run into yourself.</p>
+      <button id="startBtn">Run</button>
+    </div>
+  </div>
+  <div id="over" class="overlay" hidden>
+    <div class="card">
+      <div class="big" id="finalDist">0 m</div>
+      <p class="cause" id="cause"></p>
+      <p id="bestLine"></p>
+      <button id="againBtn">Run again</button><br>
+      <button id="resetBtn" class="ghost">Clear today's echoes</button>
+    </div>
+  </div>
+  <script type="module" src="/src/echo/main.ts"></script>
+</body>
+</html>
