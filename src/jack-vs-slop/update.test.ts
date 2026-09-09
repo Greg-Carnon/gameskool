@@ -80,7 +80,7 @@ describe('Update', () => {
     s.spawnAcc = -99;
     update(s, 1 / 60, rng, noop);
     expect(s.strikes).toBe(1);
-    expect(s.built).toEqual([{ template: slop.template, slop: true }]);
+    expect(s.built.map((b) => ({ template: b.template, slop: b.slop }))).toEqual([{ template: slop.template, slop: true }]);
     expect(s.lastMistake).toContain(slop.violationLabel);
 
     const clean = spawnComponent(0, rng, 2, false); clean.y = RULES.field.acceptY - clean.h - 1; clean.speed = 1000;

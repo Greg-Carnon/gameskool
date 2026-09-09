@@ -59,8 +59,10 @@ export function tapAt(s: State, x: number, y: number, ev: Events): boolean {
 
 function accept(s: State, c: Component, ev: Events): void {
   const slop = c.violationId !== null;
-  s.built.push({ template: c.template, slop });
-  if (s.built.length > 14) s.built.shift();
+  c.phase = 'accepted';
+  c.anim = 0;
+  s.built.push({ template: c.template, slop, h: c.h, component: c });
+  if (s.built.length > 8) s.built.shift();
   if (slop) mistake(s, c, `That was slop: ${c.violationLabel}`, ev);
   else correct(s, c, ev);
 }
@@ -78,7 +80,7 @@ export function update(s: State, dt: number, rng: () => number, ev: Events): voi
   }
 
   for (const c of s.components) {
-    if (c.phase === 'rejected') { c.anim += dt; continue; }
+    if (c.phase !== 'falling') { c.anim += dt; continue; }
     c.y += c.speed * dt;
   }
 
@@ -88,5 +90,5 @@ export function update(s: State, dt: number, rng: () => number, ev: Events): voi
     if (s.over) break;
     accept(s, c, ev);
   }
-  s.components = s.components.filter((c) => !(c.phase === 'falling' && c.y + c.h >= RULES.field.acceptY) && !(c.phase === 'rejected' && c.anim > 0.3));
+  s.components = s.components.filter((c) => c.phase === 'falling' || c.anim <= 0.5);
 }

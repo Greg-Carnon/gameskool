@@ -4,39 +4,50 @@
   <meta charset="utf-8">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#070911">
+  <meta name="theme-color" content="#05060c">
+  <meta property="og:title" content="Blitzableiter">
+  <meta property="og:description" content="Place rods. Chain the lightning. Don't let the storm win.">
   <title>Blitzableiter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
-    html, body { margin: 0; height: 100%; background: #070911; overflow: hidden; overscroll-behavior: none; }
-    body { font-family: system-ui, -apple-system, sans-serif; color: #e8ecf3; -webkit-user-select: none; user-select: none; }
+    :root { --ink:#05060c; --paper:#dff1ff; --blue:#7cc4ff; --hot:#ff8a8a; }
+    html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; overscroll-behavior: none; }
+    body { font-family: Inter, system-ui, -apple-system, sans-serif; color: var(--paper); -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
     canvas { display: block; position: fixed; inset: 0; }
-    .overlay { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; background: rgba(7, 9, 17, 0.72); padding: 24px; }
+    .overlay { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; background: rgba(5, 6, 12, 0.6); padding: 24px; z-index: 10; }
     .overlay[hidden] { display: none; }
-    h1 { font-size: 40px; margin: 0 0 8px; letter-spacing: 0.04em; }
-    p { margin: 6px 0; font-size: 18px; opacity: 0.85; }
-    .big { font-size: 56px; font-weight: 700; margin: 8px 0; }
-    button { margin-top: 20px; font: inherit; font-size: 20px; padding: 14px 32px; border-radius: 14px; border: 0; background: #7cc4ff; color: #070911; font-weight: 700; }
-    .hud { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 0; right: 0; text-align: center; font-size: 22px; font-weight: 700; pointer-events: none; }
-    .hud small { display: block; font-size: 13px; font-weight: 400; opacity: 0.6; }
+    .card { max-width: 340px; }
+    h1 { font-family: 'Bricolage Grotesque', Inter, sans-serif; font-weight: 800; font-size: 44px; line-height: 0.95; margin: 0 0 14px; letter-spacing: -0.03em; text-transform: uppercase; color: #fff; text-shadow: 0 0 18px rgba(124,196,255,0.9), 0 0 48px rgba(124,196,255,0.5); }
+    p { margin: 8px 0; font-size: 17px; line-height: 1.4; opacity: 0.9; }
+    p b { color: var(--blue); }
+    .big { font-family: 'Bricolage Grotesque', Inter, sans-serif; font-weight: 800; font-size: 64px; margin: 6px 0; line-height: 1; color: #fff; text-shadow: 0 0 22px rgba(124,196,255,0.8); }
+    .record { color: var(--blue); font-weight: 800; }
+    button { margin-top: 18px; font: inherit; font-weight: 800; font-size: 20px; padding: 14px 34px; border-radius: 999px; border: 0; background: var(--blue); color: var(--ink); box-shadow: 0 6px 0 #3f7fb8, 0 0 30px rgba(124,196,255,0.45); transition: transform .08s, box-shadow .08s; }
+    button:active { transform: translateY(4px); box-shadow: 0 2px 0 #3f7fb8; }
+    .hud { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 0; right: 0; text-align: center; pointer-events: none; z-index: 5; }
+    .hud .pill { display: inline-block; background: rgba(5, 6, 12, 0.6); border: 1px solid rgba(223,241,255,0.12); border-radius: 999px; padding: 6px 16px; font-weight: 800; font-size: 20px; }
+    .hud small { display: block; font-size: 12px; font-weight: 600; opacity: 0.55; margin-top: 4px; }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
-  <div class="hud"><span id="score">0</span><small id="best"></small></div>
+  <div class="hud"><span class="pill" id="score">0</span><small id="best"></small></div>
   <div id="start" class="overlay">
-    <div>
-      <h1>Blitzableiter</h1>
-      <p>Tap to place a rod.</p>
-      <p>Charges that hit a rod discharge. Rods close together chain.</p>
-      <p>Too many charges on screen: game over.</p>
+    <div class="card">
+      <h1>Blitz&shy;ableiter</h1>
+      <p><b>Tap</b> to plant a lightning rod.</p>
+      <p>Charges that touch a rod discharge. Rods close together <b>chain</b>.</p>
+      <p>Too many charges and the storm wins.</p>
       <button id="startBtn">Tap to play</button>
     </div>
   </div>
   <div id="over" class="overlay" hidden>
-    <div>
-      <p>Game over</p>
+    <div class="card">
+      <p>The storm won</p>
       <div class="big" id="finalScore">0</div>
-      <p id="nearMiss"></p>
+      <p class="record" id="nearMiss"></p>
       <p id="chainInfo"></p>
       <button id="againBtn">One more go</button>
     </div>

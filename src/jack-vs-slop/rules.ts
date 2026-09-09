@@ -3,7 +3,7 @@
  * Alle Tuning-Zahlen des Spiels stehen ebenfalls hier.
  */
 export const DS = {
-  fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
   headingWeight: 700,
   bodyWeight: 400,
   radius: 12,
@@ -117,7 +117,7 @@ export const VIOLATIONS: Violation[] = [
 ];
 
 export const RULES = {
-  field: { x: 45, w: 300, acceptY: 600, stripY: 640 },
+  field: { x: 45, w: 300, acceptY: 496 },
   fall: { timeStart: 3.2, timeEnd: 1.3, rampSeconds: 120, spawnGap: 0.62 },
   slopProbability: 0.42,
   tierAt: [0, 30, 75] as const,

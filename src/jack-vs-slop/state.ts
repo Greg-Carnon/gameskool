@@ -12,13 +12,15 @@ export interface Component {
   y: number;
   h: number;
   speed: number;
-  phase: 'falling' | 'rejected';
+  phase: 'falling' | 'rejected' | 'accepted';
   anim: number;
 }
 
 export interface Built {
   template: TemplateId;
   slop: boolean;
+  h: number;
+  component: Component;
 }
 
 export interface State {

@@ -1,12 +1,28 @@
 import { H, W } from '../kit/canvas';
-import { easeOutCubic } from '../kit/tween';
+import { easeOutBack, easeOutCubic, lerp } from '../kit/tween';
+import { drawBubble, drawJack, type Pose } from './jack';
 import { RULES, type Style } from './rules';
 import type { Component, State } from './state';
 
-const BG = '#0b0d14';
-const STRIP_BG = '#10131d';
+export interface UiFx {
+  t: number;
+  pose: Pose;
+  poseT: number;
+  bubble: string | null;
+  bubbleT: number;
+  comboGlow: number;   // 0..1
+  slopFlash: number;   // 0..1, klingt ab
+}
+
+const INK = '#0a0b10';
+const PAPER = '#f4f1ea';
+const GREEN = '#5cf2a0';
 const SLOP_A = '#7b3fe4';
 const SLOP_B = '#e44fb0';
+
+export const PHONE = { x: 222, y: 522, w: 132, h: 236, r: 20 };
+export const JACK = { x: 108, y: 640, scale: 0.78 };
+const MINI = 0.36;
 
 function font(s: Style, size: number, heading: boolean): string {
   return `${heading ? s.headingWeight : s.bodyWeight} ${size}px ${heading ? s.headingFamily : s.bodyFamily}`;
@@ -23,18 +39,21 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
+function slopGradient(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): CanvasGradient {
+  const g = ctx.createLinearGradient(x, y, x + w, y + h);
+  g.addColorStop(0, SLOP_A);
+  g.addColorStop(1, SLOP_B);
+  return g;
+}
+
 function surface(ctx: CanvasRenderingContext2D, s: Style, x: number, y: number, w: number, h: number): void {
-  roundRect(ctx, x, y, w, h, s.radius);
-  if (s.gradient) {
-    const g = ctx.createLinearGradient(x, y, x + w, y + h);
-    g.addColorStop(0, SLOP_A);
-    g.addColorStop(1, SLOP_B);
-    ctx.fillStyle = g;
-  } else {
-    ctx.fillStyle = s.surface;
-  }
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  roundRect(ctx, x, y + 6, w, h, s.radius);
   ctx.fill();
-  ctx.strokeStyle = '#262c3b';
+  roundRect(ctx, x, y, w, h, s.radius);
+  ctx.fillStyle = s.gradient ? slopGradient(ctx, x, y, w, h) : s.surface;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(244,241,234,0.10)';
   ctx.lineWidth = 1;
   ctx.stroke();
 }
@@ -75,11 +94,10 @@ function icon(ctx: CanvasRenderingContext2D, s: Style, cx: number, cy: number): 
   ctx.stroke();
 }
 
-function drawComponent(ctx: CanvasRenderingContext2D, c: Component): void {
+/** Zeichnet eine Komponente mit linker oberer Ecke bei (x, y), Breite RULES.field.w. */
+export function drawComponentAt(ctx: CanvasRenderingContext2D, c: Component, x: number, y: number): void {
   const s = c.style;
-  const x = RULES.field.x;
   const w = RULES.field.w;
-  const y = c.y;
   const h = c.h;
   const p = s.pad;
   const tx = x + p + s.textOffsetX;
@@ -144,9 +162,8 @@ function drawComponent(ctx: CanvasRenderingContext2D, c: Component): void {
       ctx.fillStyle = s.text;
       ctx.font = font(s, 14, false);
       ctx.textBaseline = 'middle';
-      const links = ['Work', 'About', 'Contact'];
       let lx = tx + 60;
-      for (const l of links) {
+      for (const l of ['Work', 'About', 'Contact']) {
         ctx.fillText(l, lx, y + h / 2);
         lx += ctx.measureText(l).width + 22;
       }
@@ -155,65 +172,190 @@ function drawComponent(ctx: CanvasRenderingContext2D, c: Component): void {
   }
 }
 
-function drawStrip(ctx: CanvasRenderingContext2D, s: State): void {
-  const y0 = RULES.field.stripY;
-  ctx.fillStyle = STRIP_BG;
-  ctx.fillRect(0, y0, W, H - y0);
-  ctx.fillStyle = '#262c3b';
-  ctx.fillRect(0, y0, W, 1);
-  ctx.fillStyle = '#6b7385';
-  ctx.font = '600 11px system-ui, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText('YOUR $10,000 WEBSITE', RULES.field.x, y0 + 20);
-  const cell = 20;
-  const gap = 4;
-  const startX = RULES.field.x;
-  const perRow = Math.floor(RULES.field.w / (cell + gap));
-  s.built.forEach((b, i) => {
-    const cx = startX + (i % perRow) * (cell + gap);
-    const cy = y0 + 30 + Math.floor(i / perRow) * (cell + gap);
-    roundRect(ctx, cx, cy, cell, cell, 4);
-    if (b.slop) {
-      const g = ctx.createLinearGradient(cx, cy, cx + cell, cy + cell);
-      g.addColorStop(0, SLOP_A);
-      g.addColorStop(1, SLOP_B);
-      ctx.fillStyle = g;
-    } else {
-      ctx.fillStyle = '#2b3345';
-    }
+function drawStudio(ctx: CanvasRenderingContext2D, fx: UiFx): void {
+  // Grundton
+  ctx.fillStyle = INK;
+  ctx.fillRect(0, 0, W, H);
+  // LED-Schein unten links, wächst mit Combo
+  const glow = 0.22 + 0.45 * fx.comboGlow;
+  const g1 = ctx.createRadialGradient(40, H, 10, 40, H, 420);
+  g1.addColorStop(0, `rgba(92,242,160,${glow})`);
+  g1.addColorStop(1, 'rgba(92,242,160,0)');
+  ctx.fillStyle = g1;
+  ctx.fillRect(0, 0, W, H);
+  // Zweiter, kühler Schein oben rechts
+  const g2 = ctx.createRadialGradient(W, 0, 10, W, 0, 360);
+  g2.addColorStop(0, 'rgba(92,242,160,0.08)');
+  g2.addColorStop(1, 'rgba(92,242,160,0)');
+  ctx.fillStyle = g2;
+  ctx.fillRect(0, 0, W, H);
+  // LED-Streifen an der Wand
+  ctx.fillStyle = `rgba(92,242,160,${0.5 + 0.5 * fx.comboGlow})`;
+  ctx.fillRect(0, 512, 3, H - 512);
+  // Pflanze links hinter Jack
+  ctx.fillStyle = '#13251f';
+  for (let i = 0; i < 7; i++) {
+    const a = -1.2 + i * 0.36;
+    ctx.save();
+    ctx.translate(26, 640);
+    ctx.rotate(a);
+    ctx.beginPath();
+    ctx.ellipse(0, -46, 12, 50, 0, 0, Math.PI * 2);
     ctx.fill();
-  });
+    ctx.restore();
+  }
+  ctx.fillStyle = '#1a1712';
+  roundRect(ctx, 6, 636, 40, 40, 6);
+  ctx.fill();
+  // Mikrofon am Arm von rechts oben ins Bild
+  ctx.strokeStyle = '#2a2d36';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(W + 10, 560);
+  ctx.lineTo(300, 600);
+  ctx.lineTo(206, 596);
+  ctx.stroke();
+  ctx.fillStyle = '#3a3d47';
+  roundRect(ctx, 172, 580, 40, 30, 14);
+  ctx.fill();
+  ctx.fillStyle = '#1f2129';
+  for (let i = 0; i < 4; i++) ctx.fillRect(178 + i * 8, 586, 4, 18);
 }
 
-export function render(ctx: CanvasRenderingContext2D, s: State): void {
-  ctx.fillStyle = BG;
-  ctx.fillRect(0, 0, W, H);
-
-  // Akzeptanzlinie
-  ctx.strokeStyle = 'rgba(92, 242, 160, 0.35)';
-  ctx.setLineDash([6, 6]);
+function drawFeedFrame(ctx: CanvasRenderingContext2D): void {
+  const { x, w, acceptY } = RULES.field;
+  ctx.fillStyle = 'rgba(244,241,234,0.03)';
+  roundRect(ctx, x - 8, 56, w + 16, acceptY - 56, 18);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(244,241,234,0.08)';
   ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.font = '800 10px Inter, system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(244,241,234,0.35)';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('AI FEED', x + 4, 72);
+  // Akzeptanzlinie
+  ctx.strokeStyle = 'rgba(92,242,160,0.5)';
+  ctx.setLineDash([5, 7]);
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(RULES.field.x, RULES.field.acceptY);
-  ctx.lineTo(RULES.field.x + RULES.field.w, RULES.field.acceptY);
+  ctx.moveTo(x - 8, acceptY);
+  ctx.lineTo(x + w + 8, acceptY);
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.fillStyle = GREEN;
+  ctx.textAlign = 'right';
+  ctx.fillText('INTO THE SITE ↓', x + w + 4, acceptY - 6);
+}
 
+function drawPhone(ctx: CanvasRenderingContext2D, s: State, fx: UiFx): void {
+  const { x, y, w, h, r } = PHONE;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  roundRect(ctx, x, y + 8, w, h, r);
+  ctx.fill();
+  ctx.fillStyle = '#1b1e27';
+  roundRect(ctx, x, y, w, h, r);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(244,241,234,0.18)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Display
+  const dx = x + 7, dy = y + 7, dw = w - 14, dh = h - 14;
+  ctx.save();
+  roundRect(ctx, dx, dy, dw, dh, r - 6);
+  ctx.clip();
+  ctx.fillStyle = fx.slopFlash > 0 ? `rgba(123,63,228,${0.25 * fx.slopFlash})` : '#0e1017';
+  ctx.fillRect(dx, dy, dw, dh);
+  ctx.fillStyle = '#0e1017';
+  if (fx.slopFlash <= 0) ctx.fillRect(dx, dy, dw, dh);
+  // Gebaute Komponenten gestapelt, neueste unten
+  const gap = 4;
+  let total = 0;
+  for (const b of s.built) total += b.h * MINI + gap;
+  let cy = dy + 12 + Math.min(0, dh - 16 - total);
+  const innerX = dx + (dw - RULES.field.w * MINI) / 2;
+  for (const b of s.built) {
+    ctx.save();
+    ctx.translate(innerX, cy);
+    ctx.scale(MINI, MINI);
+    drawComponentAt(ctx, b.component, 0, 0);
+    ctx.restore();
+    cy += b.h * MINI + gap;
+  }
+  if (s.built.length === 0) {
+    ctx.fillStyle = 'rgba(244,241,234,0.3)';
+    ctx.font = '600 11px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('your site', dx + dw / 2, dy + dh / 2);
+  }
+  ctx.restore();
+  // Notch
+  ctx.fillStyle = '#1b1e27';
+  roundRect(ctx, x + w / 2 - 18, y + 4, 36, 8, 4);
+  ctx.fill();
+  // Label
+  ctx.fillStyle = 'rgba(244,241,234,0.4)';
+  ctx.font = '800 10px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('$10,000 WEBSITE', x + w / 2, y + h + 18);
+}
+
+export function render(ctx: CanvasRenderingContext2D, s: State, fx: UiFx): void {
+  drawStudio(ctx, fx);
+  drawFeedFrame(ctx);
+
+  // Fallende und animierte Komponenten
+  const fieldX = RULES.field.x;
   for (const c of s.components) {
-    if (c.phase === 'rejected') {
-      const k = easeOutCubic(Math.min(1, c.anim / 0.3));
+    if (c.phase === 'falling') {
+      drawComponentAt(ctx, c, fieldX, c.y);
+    } else if (c.phase === 'rejected') {
+      const k = easeOutCubic(Math.min(1, c.anim / 0.35));
       ctx.save();
       ctx.globalAlpha = 1 - k;
-      ctx.translate(RULES.field.x + RULES.field.w / 2, c.y + c.h / 2);
-      ctx.rotate(-0.25 * k);
-      ctx.translate(-(RULES.field.x + RULES.field.w / 2) - 220 * k, -(c.y + c.h / 2));
-      drawComponent(ctx, c);
+      ctx.translate(fieldX + RULES.field.w / 2 - 260 * k, c.y + c.h / 2 - 40 * k);
+      ctx.rotate(-0.5 * k);
+      ctx.scale(1 - 0.3 * k, 1 - 0.3 * k);
+      drawComponentAt(ctx, c, -RULES.field.w / 2, -c.h / 2);
       ctx.restore();
     } else {
-      drawComponent(ctx, c);
+      // accepted: schrumpft ins Phone
+      const k = easeOutCubic(Math.min(1, c.anim / 0.45));
+      const tx = PHONE.x + PHONE.w / 2;
+      const ty = PHONE.y + PHONE.h - 30;
+      const cx = lerp(fieldX + RULES.field.w / 2, tx, k);
+      const cy = lerp(c.y + c.h / 2, ty, k);
+      const sc = lerp(1, MINI, k);
+      ctx.save();
+      ctx.globalAlpha = 1 - Math.max(0, k - 0.8) * 5;
+      ctx.translate(cx, cy);
+      ctx.scale(sc, sc);
+      drawComponentAt(ctx, c, -RULES.field.w / 2, -c.h / 2);
+      ctx.restore();
     }
   }
 
-  drawStrip(ctx, s);
+  drawPhone(ctx, s, fx);
+  drawJack(ctx, JACK.x, JACK.y, JACK.scale, fx.pose, fx.poseT, fx.t);
+
+  if (fx.bubble) {
+    const k = easeOutBack(Math.min(1, fx.bubbleT / 0.25));
+    const alpha = fx.bubbleT > 1.2 ? Math.max(0, 1 - (fx.bubbleT - 1.2) / 0.3) : 1;
+    ctx.save();
+    ctx.translate(150, 500);
+    ctx.scale(k, k);
+    drawBubble(ctx, 0, 0, fx.bubble, alpha);
+    ctx.restore();
+  }
+
+  // Slop-Flash über allem
+  if (fx.slopFlash > 0) {
+    ctx.fillStyle = `rgba(255,94,94,${0.25 * fx.slopFlash})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+  void PAPER;
 }

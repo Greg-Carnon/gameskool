@@ -4,45 +4,59 @@
   <meta charset="utf-8">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#0b0d14">
+  <meta name="theme-color" content="#0a0b10">
+  <meta property="og:title" content="Jack vs Slop">
+  <meta property="og:description" content="Tap the slop. Keep the clean design. Three mistakes and the site is slop.">
   <title>Jack vs Slop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
   <style>
-    html, body { margin: 0; height: 100%; background: #0b0d14; overflow: hidden; overscroll-behavior: none; }
-    body { font-family: system-ui, -apple-system, sans-serif; color: #eef1f6; -webkit-user-select: none; user-select: none; }
+    :root { --ink:#0a0b10; --paper:#f4f1ea; --yellow:#ffd23f; --green:#5cf2a0; --red:#ff5e5e; }
+    html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; overscroll-behavior: none; }
+    body { font-family: Inter, system-ui, -apple-system, sans-serif; color: var(--paper); -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
     canvas { display: block; position: fixed; inset: 0; }
-    .overlay { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; background: rgba(11, 13, 20, 0.8); padding: 24px; }
+    .overlay { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; background: rgba(10, 11, 16, 0.72); padding: 24px; z-index: 10; }
     .overlay[hidden] { display: none; }
-    h1 { font-size: 40px; margin: 0 0 8px; letter-spacing: -0.02em; }
-    p { margin: 6px 0; font-size: 17px; opacity: 0.85; line-height: 1.4; }
-    .big { font-size: 56px; font-weight: 700; margin: 8px 0; }
-    .level { color: #5cf2a0; font-weight: 700; font-size: 22px; }
-    .reason { color: #ff8a8a; }
-    button { margin-top: 20px; font: inherit; font-size: 20px; padding: 14px 32px; border-radius: 12px; border: 0; background: #5cf2a0; color: #08110c; font-weight: 700; }
-    .hud { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 20px; font-size: 20px; font-weight: 700; pointer-events: none; }
-    .hud .combo { color: #5cf2a0; }
-    .hud .strikes { letter-spacing: 3px; color: #ff8a8a; }
+    .card { max-width: 340px; }
+    h1 { font-family: 'Archivo Black', Inter, sans-serif; font-size: 46px; line-height: 0.95; margin: 0 0 14px; letter-spacing: -0.01em; text-transform: uppercase; transform: rotate(-2deg); }
+    h1 .vs { display: block; font-size: 22px; color: var(--yellow); letter-spacing: 0.2em; margin: 4px 0; }
+    h1 .mark { position: relative; display: inline-block; }
+    h1 .mark::after { content: ''; position: absolute; left: -6px; right: -6px; bottom: 4px; height: 14px; background: var(--yellow); z-index: -1; transform: skew(-8deg) rotate(-1deg); }
+    p { margin: 8px 0; font-size: 17px; line-height: 1.4; opacity: 0.9; }
+    p b { color: var(--yellow); }
+    .big { font-family: 'Archivo Black', Inter, sans-serif; font-size: 64px; margin: 6px 0; line-height: 1; }
+    .level { color: var(--green); font-weight: 800; font-size: 22px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .reason { color: var(--red); font-weight: 600; }
+    .record { color: var(--yellow); font-weight: 800; }
+    button { margin-top: 18px; font: inherit; font-weight: 800; font-size: 20px; padding: 14px 34px; border-radius: 999px; border: 0; background: var(--yellow); color: var(--ink); box-shadow: 0 6px 0 #c9a12a; transition: transform .08s, box-shadow .08s; }
+    button:active { transform: translateY(4px); box-shadow: 0 2px 0 #c9a12a; }
+    .hud { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 14px; pointer-events: none; z-index: 5; }
+    .pill { background: rgba(10, 11, 16, 0.7); border: 1px solid rgba(244, 241, 234, 0.12); border-radius: 999px; padding: 6px 14px; font-weight: 800; font-size: 18px; }
+    .pill.combo { color: var(--green); }
+    .pill.strikes { color: var(--red); letter-spacing: 3px; }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
-  <div class="hud"><span id="score">0</span><span class="combo" id="combo"></span><span class="strikes" id="strikes">●●●</span></div>
+  <div class="hud"><span class="pill" id="score">0</span><span class="pill combo" id="combo" hidden></span><span class="pill strikes" id="strikes">●●●</span></div>
   <div id="start" class="overlay">
-    <div>
-      <h1>Jack vs Slop</h1>
-      <p>UI components are falling into your website.</p>
-      <p><strong>Tap the slop</strong> to throw it out.<br>Let the clean design through.</p>
+    <div class="card">
+      <h1>Jack <span class="vs">VS</span> <span class="mark">Slop</span></h1>
+      <p>AI components are falling into your website.</p>
+      <p><b>Tap the slop</b> to throw it out.<br>Let clean design through.</p>
       <p>Three mistakes and the site is slop.</p>
       <button id="startBtn">Tap to play</button>
     </div>
   </div>
   <div id="over" class="overlay" hidden>
-    <div>
+    <div class="card">
       <p>Game over</p>
       <div class="big" id="finalScore">0</div>
       <div class="level" id="level"></div>
       <p class="reason" id="reason"></p>
       <p id="siteInfo"></p>
-      <p id="nearMiss"></p>
+      <p class="record" id="nearMiss"></p>
       <button id="againBtn">One more go</button>
     </div>
   </div>
