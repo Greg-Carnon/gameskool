@@ -53,3 +53,20 @@ Die Logik beider Spiele und alle Tests. Der Entwurf ist Render, Sound, Typografi
 - Musik-Loops
 - Fonts selbst hosten statt Google Fonts (Offline, Ladezeit)
 - Comic Neue als WOFF2 bündeln für Android
+
+## Status nach Umsetzung, 9. September abends
+
+Beides live, per Playwright auf 390x844 geprüft, 33 Tests grün, keine Konsolenfehler.
+
+**Jack vs Slop umgesetzt:** Studio-Szene mit LED-Schein, Pflanze, Mikro. Jack als Büste mit vier Posen und Sprechblasen. Feed-Rahmen, Akzeptanzlinie, Phone-Mockup mit echten Mini-Komponenten (Slop landet sichtbar darin). Rauswerfen fliegt nach links mit "SLOP!"-Stempel, Durchlassen schrumpft ins Phone. Combo-Glow, Slop-Flash, Floating Texte, fünf Sounds. Archivo Black, Inter, Caveat.
+
+**Blitzableiter umgesetzt:** Nachthimmel mit Gefahr-Tönung, Wetterleuchten, Sterne, Regen, Stadtsilhouette mit flackernden Fenstern. Ladungen als Glühkugeln (vorgerenderter Sprite), Ableiter als Neon-Pins, dreischichtige Blitze mit Nebenästen, Flash ab Kette 2, Hit-Stop und Donner ab Kette 3, Floating Texte ("+240", "TRIPLE ×3"). Bricolage Grotesque, Inter.
+
+**Was ich beim Anschauen noch verbessern würde (Einschätzung, in Reihenfolge):**
+1. Jacks Haare: die seitlichen Locken wirken wie Ohrenschützer. Besser ein Haarband unter dem Cap-Rand mit welliger Unterkante.
+2. Jacks Cap: Krone flacher und breiter, eine Naht, damit sie als Baseball-Cap statt Helm liest.
+3. Jack vs Slop: die Kette als durchgehende Kurve statt Punkte.
+4. Blitzableiter: Ableiter sind klein. Etwas größer, mit stärkerer Spitze, damit man sie im Regen sofort findet.
+5. Blitzableiter: Idle-Szene auf dem Titelscreen könnte ein paar Ladungen driften lassen, damit der Himmel lebt.
+6. Beide: Game-Over-Overlay verdeckt die Szene. Ein halbtransparenter Karten-Look, bei dem Jack oder die Stadt sichtbar bleibt, wäre schöner.
+7. Fonts selbst hosten (aktuell Google Fonts, funktioniert, kostet aber einen Roundtrip).
