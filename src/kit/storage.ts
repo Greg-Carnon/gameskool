@@ -1,0 +1,17 @@
+/** localStorage mit JSON und try/catch. Private Mode oder volle Quota brechen das Spiel nicht. */
+export function load<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? fallback : (JSON.parse(raw) as T);
+  } catch {
+    return fallback;
+  }
+}
+
+export function save(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* absichtlich still */
+  }
+}

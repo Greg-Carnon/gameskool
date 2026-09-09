@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#070911">
+  <title>Blitzableiter</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #070911; overflow: hidden; overscroll-behavior: none; }
+    body { font-family: system-ui, -apple-system, sans-serif; color: #e8ecf3; -webkit-user-select: none; user-select: none; }
+    canvas { display: block; position: fixed; inset: 0; }
+    .overlay { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; background: rgba(7, 9, 17, 0.72); padding: 24px; }
+    .overlay[hidden] { display: none; }
+    h1 { font-size: 40px; margin: 0 0 8px; letter-spacing: 0.04em; }
+    p { margin: 6px 0; font-size: 18px; opacity: 0.85; }
+    .big { font-size: 56px; font-weight: 700; margin: 8px 0; }
+    button { margin-top: 20px; font: inherit; font-size: 20px; padding: 14px 32px; border-radius: 14px; border: 0; background: #7cc4ff; color: #070911; font-weight: 700; }
+    .hud { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 0; right: 0; text-align: center; font-size: 22px; font-weight: 700; pointer-events: none; }
+    .hud small { display: block; font-size: 13px; font-weight: 400; opacity: 0.6; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud"><span id="score">0</span><small id="best"></small></div>
+  <div id="start" class="overlay">
+    <div>
+      <h1>Blitzableiter</h1>
+      <p>Tap to place a rod.</p>
+      <p>Charges that hit a rod discharge. Rods close together chain.</p>
+      <p>Too many charges on screen: game over.</p>
+      <button id="startBtn">Tap to play</button>
+    </div>
+  </div>
+  <div id="over" class="overlay" hidden>
+    <div>
+      <p>Game over</p>
+      <div class="big" id="finalScore">0</div>
+      <p id="nearMiss"></p>
+      <p id="chainInfo"></p>
+      <button id="againBtn">One more go</button>
+    </div>
+  </div>
+  <script type="module" src="/src/blitzableiter/main.ts"></script>
+</body>
+</html>

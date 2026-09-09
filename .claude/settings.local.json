@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:yukaichou.com)",
+      "WebSearch",
+      "WebFetch(domain:www.youtube.com)",
+      "WebFetch(domain:chooseto.ai)",
+      "WebFetch(domain:invidious.logicism.tv)",
+      "Bash(npm -v)",
+      "Bash(git --version)",
+      "Bash(gh --version)",
+      "Bash(vercel --version)",
+      "Bash(gh auth *)"
+    ]
+  }
+}
