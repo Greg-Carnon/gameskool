@@ -18,10 +18,12 @@ export function levelName(score: number): string {
   return name;
 }
 
+/** Slop erkennen zählt voll, sauberes durchlassen zählt wenig: Nichtstun darf sich nicht lohnen. */
 function correct(s: State, c: Component, ev: Events): void {
   s.combo++;
   if (s.combo > s.bestCombo) s.bestCombo = s.combo;
-  s.score += RULES.score.perCorrect * multiplier(s.combo);
+  const base = c.phase === 'rejected' ? RULES.score.perReject : RULES.score.perAccept;
+  s.score += base * multiplier(s.combo);
   ev.onCorrect(c, s.combo);
 }
 

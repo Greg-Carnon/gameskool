@@ -56,7 +56,7 @@ describe('Scoring', () => {
     const clean = spawnComponent(0, rng, 2, false); clean.y = 300;
     s.components.push(slop, clean);
     expect(tapAt(s, 100, 110, noop)).toBe(true);
-    expect(s.score).toBe(RULES.score.perCorrect);
+    expect(s.score).toBe(RULES.score.perReject);
     expect(s.combo).toBe(1);
     expect(tapAt(s, 100, 310, noop)).toBe(true);
     expect(s.strikes).toBe(1);
@@ -86,7 +86,7 @@ describe('Update', () => {
     const clean = spawnComponent(0, rng, 2, false); clean.y = RULES.field.acceptY - clean.h - 1; clean.speed = 1000;
     s.components.push(clean);
     update(s, 1 / 60, rng, noop);
-    expect(s.score).toBe(RULES.score.perCorrect);
+    expect(s.score).toBe(RULES.score.perAccept);
     expect(s.built.length).toBe(2);
   });
   it('drei Strikes beenden das Spiel genau einmal', () => {
@@ -102,6 +102,13 @@ describe('Update', () => {
     expect(s.over).toBe(true);
     expect(overs).toBe(1);
     expect(s.strikes).toBe(RULES.strikes);
+  });
+  it('Nichtstun bringt weniger als Junior Designer', () => {
+    const s = createState(0);
+    const rng = mulberry32(11);
+    for (let i = 0; i < 60 * 120 && !s.over; i++) update(s, 1 / 60, rng, noop);
+    expect(s.over).toBe(true);
+    expect(s.score).toBeLessThan(RULES.levels[1].min);
   });
   it('ohne Eingriff bleibt der Spieler nicht ewig am Leben', () => {
     const s = createState(0);

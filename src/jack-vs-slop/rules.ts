@@ -122,7 +122,7 @@ export const RULES = {
   slopProbability: 0.42,
   tierAt: [0, 30, 75] as const,
   strikes: 3,
-  score: { perCorrect: 10, comboStep: 5 },
+  score: { perReject: 10, perAccept: 2, comboStep: 5 },
   levels: [
     { min: 0, name: 'Intern' },
     { min: 150, name: 'Junior Designer' },

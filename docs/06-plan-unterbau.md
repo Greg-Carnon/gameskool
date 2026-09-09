@@ -67,3 +67,13 @@ Reihenfolge der Ausführung: 1, 2, 6 (früh deployen), 3, 4, 5, dann erneut 6.
 **Offen für Greg:** Auf Android und iPhone spielen. Fragen: Reagiert der Tap sofort? Kommt Sound nach dem ersten Tap? Ist der Kettenradius (kurz sichtbarer Ring) lernbar? Und die Go/No-Go-Frage: Will ich weiterspielen, um eine längere Kette zu bauen?
 
 **Beobachtung aus dem Playwright-Lauf (Einschätzung):** Eine 5er-Kette brachte nur 80 Punkte, weil nur 1 bis 2 Ladungen im Zap-Radius lagen. Alle 5 Ableiter wurden dabei verbraucht, danach war das Feld schnell voll. Zu prüfen auf dem Handy: Ist der Zap-Radius (48) zu klein, oder sollten gezündete Ableiter nicht komplett verbraucht werden? Beides sind Zahlen in `rules.ts`.
+
+## Status Jack vs Slop, 9. September
+
+Grauer Prototyp live: https://gameskool.vercel.app/jack-vs-slop/ . 6 Templates, 14 Verletzungstypen in 3 Stufen (`src/jack-vs-slop/rules.ts`), 13 Simulationstests.
+
+**Befund aus dem Playwright-Lauf:** Ohne jede Eingabe erreichte das Spiel 190 Punkte und "Junior Designer", weil sauberes Design durchlassen genauso zählte wie Slop erkennen. Behoben: Rauswerfen gibt 10, Durchlassen 2, Combo zählt für beides. Ein Test sichert ab, dass Nichtstun unter "Junior Designer" bleibt.
+
+**Bekanntes Risiko, nur auf dem Gerät prüfbar:** Die Verletzung "comicFont" nutzt Comic Sans MS. Auf Android gibt es die Font nicht, der Fallback `cursive` könnte unauffällig sein. Wenn Greg das auf dem Android nicht erkennt, muss eine freie Comic-Font als WOFF2 gebündelt werden (Comic Neue, SIL OFL).
+
+**Offen für Greg:** Auf beiden Handys spielen. Go/No-Go-Frage: Erkennst du jede Stufe-2-Verletzung (ab Sekunde 30) in unter einer Sekunde? Und: Fühlt es sich nach "ich werde besser" an?
