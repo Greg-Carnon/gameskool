@@ -52,3 +52,18 @@ Reihenfolge der Ausführung: 1, 2, 6 (früh deployen), 3, 4, 5, dann erneut 6.
 - Kette: Ladung trifft Ableiter, alle Ableiter im Kettenradius zünden (BFS), jede Ladung im Trefferradius eines gezündeten Ableiters entlädt sich. Punkte pro Kette: n² mal 10
 - Verlieren: mehr als 12 Ladungen gleichzeitig auf dem Feld
 - Radius beim Setzen 0,5 s sichtbar, dann ausgeblendet
+
+## Status 9. September, abends
+
+| # | Task | Status |
+|---|---|---|
+| 1 | Scaffold | erledigt, Build 5 KB gzipped |
+| 2 | Kit rng, storage, tween mit Tests | erledigt, 14 Tests |
+| 3 | Kit canvas, loop, input | erledigt, Handy-Test offen |
+| 4 | Kit particles, shake, sfx | erledigt, Sound-Test auf iOS und Android offen |
+| 5 | Blitzableiter grau | erledigt, 6 Simulationstests für Ketten-Logik grün. Spielgefühl auf dem Handy offen |
+| 6 | Deploy | Vercel live: https://gameskool.vercel.app/blitzableiter/ . GitHub-Remote fehlt noch, `gh auth login` nötig |
+
+**Offen für Greg:** Auf Android und iPhone spielen. Fragen: Reagiert der Tap sofort? Kommt Sound nach dem ersten Tap? Ist der Kettenradius (kurz sichtbarer Ring) lernbar? Und die Go/No-Go-Frage: Will ich weiterspielen, um eine längere Kette zu bauen?
+
+**Beobachtung aus dem Playwright-Lauf (Einschätzung):** Eine 5er-Kette brachte nur 80 Punkte, weil nur 1 bis 2 Ladungen im Zap-Radius lagen. Alle 5 Ableiter wurden dabei verbraucht, danach war das Feld schnell voll. Zu prüfen auf dem Handy: Ist der Zap-Radius (48) zu klein, oder sollten gezündete Ableiter nicht komplett verbraucht werden? Beides sind Zahlen in `rules.ts`.
