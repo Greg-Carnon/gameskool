@@ -57,7 +57,7 @@ export const RULES = {
   hatch: { x: W / 2, y: H - 70, r: 26 },
   hit: { pearl: 22, mine: 19, jelly: 22, fish: 16, tank: 24 } as Record<Kind, number>,
   fish: { speed: 70, huntTime: 3, wander: 18 },
-  boss: { hp: 3, prowl: 32, hunt: 125, huntTime: 2.8, stun: 1.6, radius: 34 },
+  boss: { hp: 3, prowl: 32, hunt: 82, huntTime: 3.5, stun: 1.6, radius: 34, grace: 2.0 },
 };
 
 export function createState(mods: Mods): State {
@@ -101,7 +101,7 @@ export function startLevel(s: State, index: number, rng: () => number, ev: Event
     });
   }
   s.bossDefeated = false;
-  s.boss = s.level.boss ? { x: W / 2, y: H - 200, tx: W / 2, ty: H - 200, hp: RULES.boss.hp, mode: 'prowl', modeT: 0, vis: 0, angle: 0 } : null;
+  s.boss = s.level.boss ? { x: W / 2, y: H - 130, tx: W / 2, ty: H - 130, hp: RULES.boss.hp, mode: 'prowl', modeT: 0, vis: 0, angle: 0 } : null;
   for (const k of ['pearl', 'mine', 'jelly', 'fish', 'tank'] as Kind[]) {
     for (let i = 0; i < s.level.counts[k]; i++) spawnOne(s, k, rng);
   }
@@ -127,7 +127,7 @@ export function pointerUp(s: State, ev: Events): boolean {
   s.pingsThisLevel++;
   // Fische und Boss hören den Ping
   for (const o of s.objects) if (o.kind === 'fish') { o.huntT = RULES.fish.huntTime; o.tx = s.x; o.ty = s.y; }
-  if (s.boss && s.boss.mode !== 'stunned') {
+  if (s.boss && s.boss.mode !== 'stunned' && s.levelT > RULES.boss.grace) {
     s.boss.mode = 'hunt'; s.boss.modeT = RULES.boss.huntTime; s.boss.tx = s.x; s.boss.ty = s.y;
     ev.onBossHunt();
   }

@@ -89,6 +89,7 @@ describe('Boss', () => {
     expect(s.boss).not.toBeNull();
     const hunts: number[] = []; let down = 0;
     const ev: Events = { ...noop, onBossHunt: () => hunts.push(1), onBossDown: () => down++ };
+    s.levelT = RULES.boss.grace + 1;
     pointerDown(s, s.x, s.y); pointerUp(s, ev);
     expect(s.boss!.mode).toBe('hunt');
     expect(hunts.length).toBe(1);
