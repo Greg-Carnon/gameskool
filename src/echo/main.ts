@@ -48,7 +48,7 @@ function startGame(): void {
   playing = true;
   startEl.hidden = true;
   overEl.hidden = true;
-  runEl.textContent = `run ${runNumber} · ${markers.length} echo${markers.length === 1 ? '' : 's'}`;
+  runEl.textContent = `run ${runNumber} · ${markers.length} ${markers.length === 1 ? 'echo' : 'echoes'}`;
 }
 
 function endGame(): void {
@@ -205,4 +205,4 @@ startLoop({
     distEl.textContent = `${distanceM(state)} m`;
   },
 });
-runEl.textContent = `run ${runNumber} · ${markers.length} echo${markers.length === 1 ? '' : 's'}`;
+runEl.textContent = `run ${runNumber} · ${markers.length} ${markers.length === 1 ? 'echo' : 'echoes'}`;
