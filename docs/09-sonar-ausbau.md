@@ -41,3 +41,17 @@ Der Angler hat das Boot in drei Sekunden erwischt, weil er schneller war als das
 2. Sind die Strömungen im Wreck lesbar (bewegte Striche)?
 3. Ist Level 1 in 30 bis 60 Sekunden schaffbar? Wenn nein, Perlen von 4 auf 3.
 4. Halten für den großen Ping: entdeckt man das ohne Text?
+
+## Runde zwei, 10. September
+
+Level 1 braucht jetzt 3 Perlen (alle Levels um eine gesenkt). Dazu:
+
+- **Umgebungen pro Level:** Lichtstrahlen (Shallows), schwankender Kelp, Schiffsrumpf mit Bullaugen (Wreck), Felswände und Biolumineszenz (Trench), Rippen und Schädel (Lair), Meeresboden überall. Rotes Pulsieren, wenn der Angler jagt.
+- **Ambient-Drone** aus Web-Audio-Oszillatoren (`src/sonar/ambient.ts`): zwei verstimmte Sinustöne, atmender Tiefpass, Walrufe alle 14 bis 30 Sekunden, pulsierender Subbass im Bosslevel, Filter öffnet bei knapper Luft. Keine Audiodateien.
+- **Perlen-Chain:** Perlen innerhalb von fünf Sekunden erhöhen einen Multiplikator, mehr Luft (+4 pro Stufe), Bonuspunkte, Balken über dem Boot.
+- **Scheinwerfer:** Objekte im Radius 46 sind immer schwach sichtbar. Nimmt die Unfairness der blinden Mine. Cone am Boot.
+- **Tiefenskala** links mit erreichten Zonen und der nächsten Tiefe, rollende Tiefenzahl beim Abstieg.
+- **Onboarding ohne Text-Tutorial:** "Tap anywhere" bis zum ersten Ping, "Hold for a bigger ping" nach sechs Sekunden bis zum ersten großen Ping, "Pearls open the hatch" nach der ersten Perle. Nach drei Tauchgängen kommen keine Hinweise mehr.
+- Luke sieht aus wie eine Luke, zeigt "N MORE" und "DESCEND". Echo-Blips beim Anpingen. Blasenspur. Hit-Stop bei Tod und Boss-Treffern. Boss-Intro mit großem Banner und Brüllen. Haptik auf Android. Dive-Log Top 5 auf dem Startscreen.
+
+55 Tests. Skool-Text in `docs/10-skool-post.md`.
