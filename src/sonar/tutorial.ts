@@ -33,7 +33,7 @@ export function drawTutorial(ctx: CanvasRenderingContext2D, s: State, stage: Tut
     if (!pearl) { ctx.restore(); return; }
     arrow(ctx, s.x, s.y, pearl.x, pearl.y, pulse);
     ctx.fillStyle = '#fff6d0';
-    ctx.fillText('PEARL', pearl.x, pearl.y - 30);
+    ctx.fillText('PEARL', pearl.x, pearl.y + 34);
   } else if (stage === 'hatch') {
     arrow(ctx, s.x, s.y, RULES.hatch.x, RULES.hatch.y, pulse);
     ctx.fillStyle = '#7ff5e6';
