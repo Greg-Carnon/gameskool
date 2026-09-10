@@ -56,14 +56,22 @@
     .banner span { display: block; font-size: 14px; opacity: 0.85; margin-top: 4px; }
     .award { position: fixed; left: 50%; bottom: 80px; transform: translate(-50%, 10px); background: var(--gold); color: var(--ink); font-weight: 800; font-size: 13px; padding: 8px 14px; border-radius: 999px; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; z-index: 7; white-space: nowrap; }
     .award.show { opacity: 1; transform: translate(-50%, 0); }
+    .hint { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); background: rgba(2,10,18,0.7); border: 1px solid rgba(127,245,230,0.35); color: var(--teal); font-weight: 700; font-size: 14px; padding: 8px 16px; border-radius: 999px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 7; white-space: nowrap; }
+    .hint.show { opacity: 1; }
+    .banner.big b { font-size: 34px; letter-spacing: 0.3em; color: #ff9a5c; text-shadow: 0 0 30px rgba(255,120,80,0.7); }
+    .logbox { text-align: left; margin: 8px 0 4px; }
+    .log { display: grid; grid-template-columns: 26px 52px 1fr 60px 44px; gap: 6px; font-size: 12px; opacity: 0.85; padding: 3px 0; border-top: 1px solid rgba(127,245,230,0.08); }
+    .log b { color: var(--teal); }
+    .log span:last-child { text-align: right; color: var(--gold); }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
   <div class="hud"><span class="lbl">O₂</span><div class="bar"><div id="o2"></div></div><span class="pill" id="depth">20 m</span></div>
-  <div class="hud2"><span id="pearls">🫧 0/4</span><span id="bossHud" hidden>ANGLER <span class="boss" id="bossHp">●●●</span></span></div>
+  <div class="hud2"><span id="pearls">0/3 pearls</span><span id="bossHud" hidden>ANGLER <span class="boss" id="bossHp">●●●</span></span></div>
   <div class="banner" id="banner"><b id="bannerTitle"></b><span id="bannerSub"></span></div>
   <div class="award" id="award"></div>
+  <div class="hint" id="hint"></div>
   <button id="soundBtn">🔊</button>
   <div id="start" class="overlay">
     <div class="card">
@@ -72,10 +80,11 @@
       <p>It is dark down here. <b>Tap</b> to dive there and send a ping.</p>
       <p><b>Hold</b> for a big ping. Pearls give air and open the hatch. Go deeper.</p>
       <div class="shopbox">
-        <h2>UPGRADES <span>🫧 <span id="bank">0</span></span></h2>
+        <h2>UPGRADES <span><span id="bank">0</span> pearls</span></h2>
         <div id="shop"></div>
       </div>
       <div class="achs" id="achievements"></div>
+      <div class="logbox" id="divelog"></div>
       <button id="startBtn">Dive</button>
     </div>
   </div>

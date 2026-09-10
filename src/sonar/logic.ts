@@ -10,7 +10,7 @@ export interface Boss { x: number; y: number; tx: number; ty: number; hp: number
 export type DeathBy = Kind | 'oxygen' | 'boss';
 
 export interface Events {
-  onPearl: (x: number, y: number) => void;
+  onPearl: (x: number, y: number, chain: number) => void;
   onTank: (x: number, y: number) => void;
   onHatchOpen: () => void;
   onDescend: (level: LevelConfig, index: number) => void;
@@ -32,6 +32,9 @@ export interface State {
   pearls: number;          // in diesem Level
   pearlsDive: number;      // im ganzen Tauchgang
   pingsThisLevel: number;
+  chain: number;
+  chainT: number;
+  bonus: number;
   levelIndex: number;
   level: LevelConfig;
   levelT: number;
@@ -53,6 +56,10 @@ export const RULES = {
   chargeTime: 0.35,
   pearlAir: 16,
   tankAir: 40,
+  chainWindow: 5,
+  chainAir: 4,
+  chainScore: 5,
+  headlight: 46,
   visDecay: 0.6,
   hatch: { x: W / 2, y: H - 70, r: 26 },
   hit: { pearl: 22, mine: 19, jelly: 22, fish: 16, tank: 24 } as Record<Kind, number>,
@@ -63,7 +70,7 @@ export const RULES = {
 export function createState(mods: Mods): State {
   const s: State = {
     t: 0, x: W / 2, y: 140, tx: W / 2, ty: 140, objects: [], pings: [], currents: [], boss: null, bossDefeated: false,
-    oxygen: 100, pearls: 0, pearlsDive: 0, pingsThisLevel: 0, levelIndex: 0, level: levelAt(0), levelT: 0,
+    oxygen: 100, pearls: 0, pearlsDive: 0, pingsThisLevel: 0, chain: 0, chainT: 0, bonus: 0, levelIndex: 0, level: levelAt(0), levelT: 0,
     hatchOpen: false, transition: 0, charge: 0, holding: false, alive: true, deathBy: null, mods,
   };
   return s;
@@ -221,7 +228,10 @@ export function update(s: State, dt: number, rng: () => number, ev: Events): voi
     if (o.y < 40) o.vy = Math.abs(o.vy); if (o.y > H - 40) o.vy = -Math.abs(o.vy);
     o.x = Math.max(16, Math.min(W - 16, o.x)); o.y = Math.max(36, Math.min(H - 36, o.y));
     o.vis = Math.max(0, o.vis - RULES.visDecay * dt);
+    if (Math.hypot(o.x - s.x, o.y - s.y) < RULES.headlight) o.vis = Math.max(o.vis, 0.45);
   }
+  s.chainT = Math.max(0, s.chainT - dt);
+  if (s.chainT === 0) s.chain = 0;
 
   // Pings
   for (const p of s.pings) {
@@ -251,9 +261,12 @@ export function update(s: State, dt: number, rng: () => number, ev: Events): voi
     if (od >= RULES.hit[o.kind]) continue;
     if (o.kind === 'pearl') {
       s.pearls++; s.pearlsDive++;
-      s.oxygen = Math.min(100, s.oxygen + RULES.pearlAir);
+      s.chain = s.chainT > 0 ? s.chain + 1 : 1;
+      s.chainT = RULES.chainWindow;
+      s.bonus += (s.chain - 1) * RULES.chainScore;
+      s.oxygen = Math.min(100, s.oxygen + RULES.pearlAir + (s.chain - 1) * RULES.chainAir);
       s.objects = s.objects.filter((q) => q !== o);
-      ev.onPearl(o.x, o.y);
+      ev.onPearl(o.x, o.y, s.chain);
       if (!s.hatchOpen && s.pearls >= s.level.pearlsNeeded && (!s.level.boss || s.bossDefeated)) { s.hatchOpen = true; ev.onHatchOpen(); }
       return;
     }
@@ -283,5 +296,5 @@ export function nearestMine(s: State): number {
 }
 
 export function score(s: State): number {
-  return s.level.depth + s.pearlsDive * 10;
+  return s.level.depth + s.pearlsDive * 10 + s.bonus;
 }

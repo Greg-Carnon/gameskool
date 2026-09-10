@@ -1,8 +1,10 @@
 import { load, save } from '../kit/storage';
 
 export interface Upgrades { range: number; lungs: number; prop: number }
+export interface DiveEntry { depth: number; pearls: number; level: string; score: number; date: string }
 export interface Meta {
   pearlBank: number;
+  divelog: DiveEntry[];
   upgrades: Upgrades;
   achievements: string[];
   bestDepth: number;
@@ -14,7 +16,13 @@ export interface Mods { pingRange: number; drain: number; speed: number }
 const KEY = 'sonar-meta';
 
 export function loadMeta(): Meta {
-  return load<Meta>(KEY, { pearlBank: 0, upgrades: { range: 0, lungs: 0, prop: 0 }, achievements: [], bestDepth: 0, bestScore: 0, dives: 0 });
+  const m = load<Meta>(KEY, { pearlBank: 0, divelog: [], upgrades: { range: 0, lungs: 0, prop: 0 }, achievements: [], bestDepth: 0, bestScore: 0, dives: 0 });
+  if (!m.divelog) m.divelog = [];
+  return m;
+}
+
+export function logDive(m: Meta, e: DiveEntry): void {
+  m.divelog = [...m.divelog, e].sort((a, b) => b.score - a.score).slice(0, 5);
 }
 export function saveMeta(m: Meta): void { save(KEY, m); }
 

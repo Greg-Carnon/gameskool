@@ -83,6 +83,29 @@ describe('Fortschritt', () => {
   });
 });
 
+describe('Chain', () => {
+  it('schnelle Perlen bilden eine Chain mit Bonus, Pause bricht sie', () => {
+    const s = fresh(1, 5);
+    const rng = mulberry32(5);
+    const chains: number[] = [];
+    const ev: Events = { ...noop, onPearl: (_x, _y, c) => chains.push(c) };
+    const grab = () => { const p = s.objects.find((o) => o.kind === 'pearl')!; s.x = p.x; s.y = p.y; s.tx = p.x; s.ty = p.y; update(s, 1 / 60, rng, ev); };
+    grab(); grab();
+    expect(chains).toEqual([1, 2]);
+    expect(s.bonus).toBe(RULES.chainScore);
+    for (let i = 0; i < 60 * (RULES.chainWindow + 1); i++) { s.x = 5; s.y = 40; s.tx = 5; s.ty = 40; update(s, 1 / 60, rng, ev); }
+    grab();
+    expect(chains[2]).toBe(1);
+  });
+  it('Scheinwerfer zeigt nahe Objekte auch ohne Ping', () => {
+    const s = fresh(0, 6);
+    const mine = s.objects.find((o) => o.kind === 'mine')!;
+    s.x = mine.x + 30; s.y = mine.y; s.tx = s.x; s.ty = s.y;
+    update(s, 1 / 60, mulberry32(6), noop);
+    expect(mine.vis).toBeGreaterThan(0.3);
+  });
+});
+
 describe('Boss', () => {
   it('Boss jagt den Ping und stirbt an drei Minen', () => {
     const s = fresh(4, 7);
