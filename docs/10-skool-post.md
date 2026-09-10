@@ -4,11 +4,11 @@ Stand: 10. September 2026. Englisch, zum Kopieren. Unter "September Comp" posten
 
 ---
 
-**SONAR: a one-thumb deep sea dive where seeing costs air**
+**SONAR: Jack vs the deep**
 
-It is dark down there. Every tap moves your sub and sends out a sonar ping. For one second you see what is around you: pearls, mines, jellyfish, things that hunt you. Then the dark comes back.
+2026. The surface is drowning in AI slop. Jack can't take it anymore, so he takes the sub. Pearls are the last real things down there, and 160 m down, something guards them.
 
-Pings cost oxygen. Pearls give it back. So the whole game is one question: how much do you need to see before you move?
+It is dark. Every tap moves the sub and sends a sonar ping. For one second you see what is around you: pearls, mines, jellyfish, things that hunt you. Then the dark comes back. Pings cost oxygen. Pearls give it back. The whole game is one question: how much do you need to see before you move?
 
 **Play it (phone, portrait):** https://gameskool.vercel.app/sonar/
 
@@ -20,6 +20,7 @@ Pings cost oxygen. Pearls give it back. So the whole game is one question: how m
 - Pearls you collect stay in your bank. Buy sonar range, lungs, propeller.
 - 8 achievements, a dive log, a depth gauge, and an endless Abyss after the boss with the Angler coming back for you.
 - Ambient soundtrack made entirely from Web Audio oscillators. No audio files. Whale calls included.
+- A 10 second story intro and a tutorial with four words in it. No manual. Jack talks you through it from the porthole.
 
 **How it was built**
 This is my first game ever. Everything is Claude Code: research, 30 ideas, a shortlist, six playable prototypes in one day, then I picked the one I kept playing and we pushed on that. Vite, TypeScript, Canvas 2D, zero frameworks, ZzFX for effects, 55 automated tests for the game logic so the boss and the hatch never break. Deployed on Vercel.
@@ -30,6 +31,8 @@ The full research and design docs are in the repo if you want to see how the sau
 - Mines tick when you are close. Listen.
 - The hatch opens at the bottom when you have enough pearls.
 - Level 5 is called The Angler for a reason. Ping, then move.
+
+Yes, that Jack. Consider it a tribute, and say the word if you want him renamed.
 
 Curious what depth you reach. Post your dive log below.
 

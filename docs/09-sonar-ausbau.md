@@ -55,3 +55,15 @@ Level 1 braucht jetzt 3 Perlen (alle Levels um eine gesenkt). Dazu:
 - Luke sieht aus wie eine Luke, zeigt "N MORE" und "DESCEND". Echo-Blips beim Anpingen. Blasenspur. Hit-Stop bei Tod und Boss-Treffern. Boss-Intro mit großem Banner und Brüllen. Haptik auf Android. Dive-Log Top 5 auf dem Startscreen.
 
 55 Tests. Skool-Text in `docs/10-skool-post.md`.
+
+## Onboarding und Story, 10. September
+
+Greg: zu viel Text, man versteht nicht, was zu tun ist. Umgebaut:
+
+- **Story in drei Bildern** (`src/sonar/intro.ts`), nur beim ersten Start, per Tap weiter, später über "Story": Jack im Studio mit aufsteigenden Slop-Karten, Jack im Bullauge des großen U-Boots, die Tiefenkarte mit Perle und Angler. Je ein Satz. Jack ist wiederverwendet aus `jack-vs-slop/jack.ts`.
+- **Tutorial durch Tun** (`src/sonar/tutorial.ts`): pulsierender Fingerpunkt "TAP", Pfeil "PEARL", Fingerpunkt mit Ladering "HOLD", Pfeil "GO DEEPER". Nur im ersten Tauchgang, dann `tutorialDone`. Im Tutorial hat Level 1 zwei Minen und 40 Prozent langsamere Luft.
+- **Jack spricht** aus einer Blase unten links mit Mini-Gesicht, nur an Schlüsselstellen: erster Ping, erste Perle, großer Ping, Luke, Boss, Tod.
+- **Jack im Bullauge** des Spiel-U-Boots: Cap, blonde Haare, Schnurrbart in 5 Pixeln Radius.
+- **Startscreen reduziert:** Titel, "Jack vs the deep", ein Satz, DIVE. Upgrades und Story dahinter.
+
+Playwright: kompletter Fluss von leerem localStorage bis zum Pfeil auf die erste Perle, keine Fehler. Jacks Zeile kommt nach 1,6 s: "Dark. Finally. Ping to see."
