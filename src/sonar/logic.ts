@@ -45,6 +45,7 @@ export interface State {
   alive: boolean;
   deathBy: DeathBy | null;
   mods: Mods;
+  tutorial: boolean;
 }
 
 export const RULES = {
@@ -67,11 +68,11 @@ export const RULES = {
   boss: { hp: 3, prowl: 32, hunt: 82, huntTime: 3.5, stun: 1.6, radius: 34, grace: 2.0 },
 };
 
-export function createState(mods: Mods): State {
+export function createState(mods: Mods, tutorial = false): State {
   const s: State = {
     t: 0, x: W / 2, y: 140, tx: W / 2, ty: 140, objects: [], pings: [], currents: [], boss: null, bossDefeated: false,
     oxygen: 100, pearls: 0, pearlsDive: 0, pingsThisLevel: 0, chain: 0, chainT: 0, bonus: 0, levelIndex: 0, level: levelAt(0), levelT: 0,
-    hatchOpen: false, transition: 0, charge: 0, holding: false, alive: true, deathBy: null, mods,
+    hatchOpen: false, transition: 0, charge: 0, holding: false, alive: true, deathBy: null, mods, tutorial,
   };
   return s;
 }
@@ -87,6 +88,12 @@ function spawnOne(s: State, kind: Kind, rng: () => number): void {
     s.objects.push({ kind, x, y, vis: 0, vx: (rng() - 0.5) * drift, vy: (rng() - 0.5) * drift, phase: rng() * 6.28, huntT: 0, tx: x, ty: y });
     return;
   }
+}
+
+/** Im Tutorial-Tauchgang ist das erste Level entschärft. */
+function levelCount(s: State, k: Kind): number {
+  if (s.tutorial && s.levelIndex === 0 && k === 'mine') return 2;
+  return s.level.counts[k];
 }
 
 export function startLevel(s: State, index: number, rng: () => number, ev: Events): void {
@@ -110,7 +117,7 @@ export function startLevel(s: State, index: number, rng: () => number, ev: Event
   s.bossDefeated = false;
   s.boss = s.level.boss ? { x: W / 2, y: H - 130, tx: W / 2, ty: H - 130, hp: RULES.boss.hp, mode: 'prowl', modeT: 0, vis: 0, angle: 0 } : null;
   for (const k of ['pearl', 'mine', 'jelly', 'fish', 'tank'] as Kind[]) {
-    for (let i = 0; i < s.level.counts[k]; i++) spawnOne(s, k, rng);
+    for (let i = 0; i < levelCount(s, k); i++) spawnOne(s, k, rng);
   }
   ev.onDescend(s.level, index);
 }
@@ -204,7 +211,7 @@ export function update(s: State, dt: number, rng: () => number, ev: Events): voi
 
   // Nachschub, Perlen bleiben knapp
   for (const k of ['pearl', 'mine', 'jelly', 'fish', 'tank'] as Kind[]) {
-    const want = k === 'pearl' ? Math.min(s.level.counts.pearl, Math.max(1, s.level.pearlsNeeded - s.pearls)) : s.level.counts[k];
+    const want = k === 'pearl' ? Math.min(s.level.counts.pearl, Math.max(1, s.level.pearlsNeeded - s.pearls)) : levelCount(s, k);
     while (s.objects.filter((o) => o.kind === k).length < want) spawnOne(s, k, rng);
   }
 
@@ -252,7 +259,7 @@ export function update(s: State, dt: number, rng: () => number, ev: Events): voi
   if (s.boss) { updateBoss(s, dt, rng, ev); if (!s.alive) return; }
 
   // Sauerstoff
-  s.oxygen -= s.level.drain * s.mods.drain * dt;
+  s.oxygen -= s.level.drain * s.mods.drain * (s.tutorial && s.levelIndex === 0 ? 0.6 : 1) * dt;
   if (s.oxygen <= 0) { s.oxygen = 0; die(s, 'oxygen', ev); return; }
 
   // Kollisionen

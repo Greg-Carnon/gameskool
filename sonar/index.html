@@ -6,32 +6,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#020a12">
   <meta property="og:title" content="Sonar">
-  <meta property="og:description" content="It is dark down here. Ping to see. Seeing costs air.">
+  <meta property="og:description" content="The surface is drowning in AI slop. Jack takes the sub. Ping to see. Seeing costs air.">
   <title>Sonar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
   <style>
-    :root { --ink:#020a12; --teal:#7ff5e6; --paper:#e6fbf8; --gold:#fff6d0; }
+    :root { --ink:#020a12; --teal:#7ff5e6; --paper:#e6fbf8; --gold:#fff6d0; --orange:#ff9a5c; }
     html, body { margin: 0; height: 100%; background: var(--ink); overflow: hidden; overscroll-behavior: none; }
     body { font-family: Inter, system-ui, sans-serif; color: var(--paper); -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
-    canvas { display: block; position: fixed; inset: 0; }
-    .overlay { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; background: rgba(2, 10, 18, 0.78); padding: 20px; z-index: 10; overflow-y: auto; }
+    canvas#c { display: block; position: fixed; inset: 0; }
+    .overlay { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; background: rgba(2, 10, 18, 0.8); padding: 20px; z-index: 10; overflow-y: auto; }
     .overlay[hidden] { display: none; }
     .card { max-width: 340px; width: 100%; }
-    h1 { font-size: 34px; font-weight: 800; letter-spacing: 0.42em; margin: 0 0 4px; padding-left: 0.42em; color: var(--teal); text-shadow: 0 0 24px rgba(127,245,230,0.6); }
-    .sub { font-size: 13px; opacity: 0.7; margin: 0 0 14px; }
+    h1 { font-size: 40px; font-weight: 800; letter-spacing: 0.42em; margin: 0 0 6px; padding-left: 0.42em; color: var(--teal); text-shadow: 0 0 24px rgba(127,245,230,0.6); }
+    .tag { font-family: Caveat, cursive; font-size: 26px; color: var(--gold); margin: 0 0 6px; transform: rotate(-2deg); }
+    .sub { font-size: 13px; opacity: 0.6; margin: 0 0 18px; }
     p { margin: 6px 0; font-size: 15px; line-height: 1.45; opacity: 0.9; }
-    p b { color: var(--teal); }
     .big { font-size: 56px; font-weight: 800; line-height: 1; margin: 6px 0; }
     .cause { color: #ff8a8a; font-weight: 600; }
     .bank { color: var(--gold); font-weight: 700; }
-    button { margin-top: 14px; font: inherit; font-weight: 800; font-size: 18px; padding: 12px 32px; border-radius: 999px; border: 2px solid var(--teal); background: transparent; color: var(--teal); box-shadow: 0 0 24px rgba(127,245,230,0.25); }
+    button { margin-top: 14px; font: inherit; font-weight: 800; font-size: 20px; padding: 14px 40px; border-radius: 999px; border: 2px solid var(--teal); background: transparent; color: var(--teal); box-shadow: 0 0 24px rgba(127,245,230,0.25); }
     button:active { background: var(--teal); color: var(--ink); }
-    button.secondary { border-color: rgba(230,251,248,0.25); color: var(--paper); box-shadow: none; font-size: 15px; padding: 10px 20px; margin-left: 8px; }
-    .shopbox { text-align: left; background: rgba(127,245,230,0.06); border: 1px solid rgba(127,245,230,0.15); border-radius: 16px; padding: 12px 14px; margin: 12px 0 8px; }
-    .shopbox h2 { font-size: 12px; letter-spacing: 0.2em; margin: 0 0 8px; opacity: 0.8; display: flex; justify-content: space-between; }
-    .shopbox h2 span { color: var(--gold); }
+    button.primary { background: var(--teal); color: var(--ink); letter-spacing: 0.2em; padding-left: 48px; padding-right: 40px; }
+    button.secondary { border-color: rgba(230,251,248,0.25); color: var(--paper); box-shadow: none; font-size: 14px; padding: 9px 18px; margin: 10px 4px 0; }
+    .panel { text-align: left; background: rgba(127,245,230,0.06); border: 1px solid rgba(127,245,230,0.15); border-radius: 16px; padding: 12px 14px; margin: 12px 0 4px; }
+    .panel[hidden] { display: none; }
+    .panel h2 { font-size: 12px; letter-spacing: 0.2em; margin: 0 0 8px; opacity: 0.8; display: flex; justify-content: space-between; }
+    .panel h2 span { color: var(--gold); }
     .row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-top: 1px solid rgba(127,245,230,0.1); }
     .row:first-of-type { border-top: 0; }
     .row b { display: block; font-size: 14px; }
@@ -39,30 +41,45 @@
     .row .tiers { font-size: 10px; color: var(--teal); letter-spacing: 2px; }
     .row .buy { margin: 0; font-size: 13px; padding: 7px 12px; border-width: 1.5px; box-shadow: none; }
     .row .buy:disabled { opacity: 0.35; }
-    .achs { display: flex; justify-content: center; gap: 6px; margin: 6px 0 4px; }
+    .achs { display: flex; justify-content: center; gap: 6px; margin: 10px 0 4px; }
     .ach { font-size: 20px; filter: grayscale(1); opacity: 0.25; }
     .ach.on { filter: none; opacity: 1; }
+    .logbox { margin: 8px 0 0; }
+    .log { display: grid; grid-template-columns: 26px 52px 1fr 60px 44px; gap: 6px; font-size: 12px; opacity: 0.85; padding: 3px 0; border-top: 1px solid rgba(127,245,230,0.08); }
+    .log b { color: var(--teal); }
+    .log span:last-child { text-align: right; color: var(--gold); }
+    /* Intro */
+    #intro { background: var(--ink); padding: 0; }
+    #intro .frame { width: 100%; max-width: 420px; display: grid; grid-template-rows: 1fr auto; height: 100%; }
+    #introCanvas { width: 100%; height: 100%; display: block; }
+    .introText { padding: 22px 26px calc(24px + env(safe-area-inset-bottom)); min-height: 150px; }
+    .introText p { font-size: 20px; font-weight: 600; line-height: 1.35; margin: 0 0 10px; opacity: 1; }
+    .dots { display: flex; justify-content: center; gap: 8px; margin: 6px 0 4px; }
+    .dots span { width: 8px; height: 8px; border-radius: 50%; background: rgba(127,245,230,0.25); }
+    .dots span.on { background: var(--teal); }
+    .tapHint { font-size: 12px; opacity: 0.55; letter-spacing: 0.2em; }
+    /* HUD */
     .hud { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 14px; right: 14px; display: flex; align-items: center; gap: 10px; pointer-events: none; z-index: 5; }
     .bar { flex: 1; height: 10px; border-radius: 999px; background: rgba(127,245,230,0.12); overflow: hidden; }
     .bar div { height: 100%; width: 100%; background: var(--teal); border-radius: 999px; transition: width .2s linear, background .3s; }
     .lbl { font-size: 11px; font-weight: 800; letter-spacing: 0.2em; opacity: 0.7; }
     .pill { font-weight: 800; font-size: 15px; white-space: nowrap; }
     .hud2 { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 26px); left: 14px; right: 14px; display: flex; justify-content: space-between; pointer-events: none; z-index: 5; font-size: 13px; font-weight: 700; opacity: 0.85; }
-    .hud2 .boss { color: #ff9a5c; letter-spacing: 3px; }
+    .hud2 .boss { color: var(--orange); letter-spacing: 3px; }
     #soundBtn { position: fixed; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 6; margin: 0; padding: 8px 10px; font-size: 16px; border-color: rgba(127,245,230,0.25); box-shadow: none; }
     .banner { position: fixed; left: 0; right: 0; top: 34%; text-align: center; pointer-events: none; z-index: 7; opacity: 0; transform: translateY(8px); transition: opacity .35s, transform .35s; }
     .banner.show { opacity: 1; transform: none; }
     .banner b { display: block; font-size: 22px; letter-spacing: 0.12em; color: var(--teal); text-shadow: 0 0 20px rgba(127,245,230,0.6); }
     .banner span { display: block; font-size: 14px; opacity: 0.85; margin-top: 4px; }
+    .banner.big b { font-size: 34px; letter-spacing: 0.3em; color: var(--orange); text-shadow: 0 0 30px rgba(255,120,80,0.7); }
     .award { position: fixed; left: 50%; bottom: 80px; transform: translate(-50%, 10px); background: var(--gold); color: var(--ink); font-weight: 800; font-size: 13px; padding: 8px 14px; border-radius: 999px; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; z-index: 7; white-space: nowrap; }
     .award.show { opacity: 1; transform: translate(-50%, 0); }
-    .hint { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); background: rgba(2,10,18,0.7); border: 1px solid rgba(127,245,230,0.35); color: var(--teal); font-weight: 700; font-size: 14px; padding: 8px 16px; border-radius: 999px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 7; white-space: nowrap; }
-    .hint.show { opacity: 1; }
-    .banner.big b { font-size: 34px; letter-spacing: 0.3em; color: #ff9a5c; text-shadow: 0 0 30px rgba(255,120,80,0.7); }
-    .logbox { text-align: left; margin: 8px 0 4px; }
-    .log { display: grid; grid-template-columns: 26px 52px 1fr 60px 44px; gap: 6px; font-size: 12px; opacity: 0.85; padding: 3px 0; border-top: 1px solid rgba(127,245,230,0.08); }
-    .log b { color: var(--teal); }
-    .log span:last-child { text-align: right; color: var(--gold); }
+    /* Jack spricht */
+    .say { position: fixed; left: 12px; bottom: max(14px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; pointer-events: none; z-index: 7; opacity: 0; transform: translateY(8px); transition: opacity .25s, transform .25s; }
+    .say.show { opacity: 1; transform: none; }
+    .say canvas { width: 54px; height: 54px; border-radius: 50%; background: #0b1a22; border: 2px solid rgba(127,245,230,0.5); }
+    .say span { background: var(--paper); color: var(--ink); font-weight: 700; font-size: 14px; padding: 8px 12px; border-radius: 14px; max-width: 230px; position: relative; }
+    .say span::before { content: ''; position: absolute; left: -8px; top: 50%; border: 6px solid transparent; border-right-color: var(--paper); transform: translateY(-50%); }
   </style>
 </head>
 <body>
@@ -71,21 +88,35 @@
   <div class="hud2"><span id="pearls">0/3 pearls</span><span id="bossHud" hidden>ANGLER <span class="boss" id="bossHp">●●●</span></span></div>
   <div class="banner" id="banner"><b id="bannerTitle"></b><span id="bannerSub"></span></div>
   <div class="award" id="award"></div>
-  <div class="hint" id="hint"></div>
+  <div class="say" id="say"><canvas id="jackFace" width="108" height="108"></canvas><span id="sayText"></span></div>
   <button id="soundBtn">🔊</button>
+
+  <div id="intro" class="overlay" hidden>
+    <div class="frame">
+      <canvas id="introCanvas"></canvas>
+      <div class="introText">
+        <p id="introLine"></p>
+        <div class="dots" id="introDots"><span class="on"></span><span></span><span></span></div>
+        <div class="tapHint" id="introTap">TAP TO CONTINUE</div>
+        <button id="introDive" class="primary" hidden>DIVE</button>
+      </div>
+    </div>
+  </div>
+
   <div id="start" class="overlay">
     <div class="card">
       <h1>SONAR</h1>
+      <p class="tag">Jack vs the deep</p>
       <p class="sub" id="bestDepth">No dives yet</p>
-      <p>It is dark down here. <b>Tap</b> to dive there and send a ping.</p>
-      <p><b>Hold</b> for a big ping. Pearls give air and open the hatch. Go deeper.</p>
-      <div class="shopbox">
+      <p>Bring up the pearls.<br>Seeing costs air.</p>
+      <button id="startBtn" class="primary">DIVE</button>
+      <div><button id="panelBtn" class="secondary">Upgrades</button><button id="storyBtn" class="secondary">Story</button></div>
+      <div class="panel" id="panel" hidden>
         <h2>UPGRADES <span><span id="bank">0</span> pearls</span></h2>
         <div id="shop"></div>
+        <div class="achs" id="achievements"></div>
+        <div class="logbox" id="divelog"></div>
       </div>
-      <div class="achs" id="achievements"></div>
-      <div class="logbox" id="divelog"></div>
-      <button id="startBtn">Dive</button>
     </div>
   </div>
   <div id="over" class="overlay" hidden>
@@ -95,7 +126,7 @@
       <p id="diveLog"></p>
       <p class="bank" id="bankLine"></p>
       <p id="bestLine"></p>
-      <button id="againBtn">Dive again</button>
+      <button id="againBtn" class="primary">DIVE AGAIN</button>
       <div><button id="menuBtn" class="secondary">Upgrades</button><button id="shareBtn" class="secondary">Share</button></div>
     </div>
   </div>

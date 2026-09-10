@@ -189,9 +189,25 @@ function drawSub(ctx: CanvasRenderingContext2D, x: number, y: number, ang: numbe
   ctx.fillStyle = '#ffd23f';
   ctx.fillRect(-6, -18, 12, 9);
   ctx.fillRect(-1, -24, 2, 7);
-  ctx.fillStyle = TEAL;
-  ctx.beginPath(); ctx.arc(6, -1, 4.5, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#8a6a10'; ctx.lineWidth = 1.5; ctx.stroke();
+  // Bullauge mit Jack: Cap, blonde Haare, Schnurrbart
+  ctx.fillStyle = '#c9f5ff';
+  ctx.beginPath(); ctx.arc(6, -1, 5.2, 0, Math.PI * 2); ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.arc(6, -1, 5.2, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = '#f1c7a3';
+  ctx.beginPath(); ctx.arc(6, 0.5, 3.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e8c25c';
+  ctx.fillRect(2.4, -2.4, 7.2, 1.6);
+  ctx.fillStyle = '#f5f2ea';
+  ctx.beginPath(); ctx.arc(6, -2.6, 3.9, Math.PI, Math.PI * 2); ctx.fill();
+  ctx.fillRect(2, -3, 9.5, 1.1);
+  ctx.fillStyle = '#c48f45';
+  ctx.fillRect(4.2, 1.6, 3.6, 1);
+  ctx.fillStyle = '#2a1e14';
+  ctx.fillRect(4.6, -0.6, 0.9, 0.9); ctx.fillRect(6.6, -0.6, 0.9, 0.9);
+  ctx.restore();
+  ctx.strokeStyle = '#8a6a10'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(6, -1, 5.2, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = '#fff6d0';
   ctx.beginPath(); ctx.arc(20, 0, 2.5, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = '#8a6a10'; ctx.lineWidth = 2.5;

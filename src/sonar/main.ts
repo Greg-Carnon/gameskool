@@ -11,6 +11,9 @@ import { startAmbient, updateAmbient } from './ambient';
 import { createState, nearestMine, pointerDown, pointerUp, RULES, score, startLevel, update, type Events, type State } from './logic';
 import { ACHIEVEMENTS, buy, loadMeta, logDive, modsFrom, saveMeta, unlock, UPGRADES, upgradeCost, type Meta } from './meta';
 import { render, type SceneFx } from './render';
+import { drawIntroFrame, INTRO_LINES } from './intro';
+import { drawTutorial, type TutStage } from './tutorial';
+import { drawJack } from '../jack-vs-slop/jack';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('c');
@@ -43,7 +46,10 @@ let playing = false;
 let tickAcc = 0;
 let bubbleAcc = 0;
 let freeze = 0;
-let hintStage = 0; // 0 tap, 1 hold, 2 fertig
+let tut: TutStage = 'done';
+let introFrame = 0;
+let introT = 0;
+let sayTimer: number | undefined;
 const fx: SceneFx = { t: 0, fade: 0, bossFlash: 0, shownDepth: 20 };
 
 const startEl = $('start');
@@ -57,13 +63,22 @@ const banner = $('banner');
 const bannerTitle = $('bannerTitle');
 const bannerSub = $('bannerSub');
 const award = $('award');
-const hint = $('hint');
 const shop = $('shop');
 const achEl = $('achievements');
 const logEl = $('divelog');
 const bankEl = $('bank');
 const bestDepthEl = $('bestDepth');
 const soundBtn = $('soundBtn');
+const introEl = $('intro');
+const introCanvas = $<HTMLCanvasElement>('introCanvas');
+const introLine = $('introLine');
+const introDots = $('introDots');
+const introTap = $('introTap');
+const introDive = $<HTMLButtonElement>('introDive');
+const sayEl = $('say');
+const sayText = $('sayText');
+const jackFace = $<HTMLCanvasElement>('jackFace');
+const panel = $('panel');
 
 function showBanner(title: string, sub: string, ms = 2600, big = false): void {
   bannerTitle.textContent = title;
@@ -82,9 +97,37 @@ function tryUnlock(id: string): void {
   const a = ACHIEVEMENTS.find((x) => x.id === id);
   if (a && unlock(meta, id)) showAward(`${a.icon} ${a.name}`);
 }
-function setHint(text: string | null): void {
-  hint.textContent = text ?? '';
-  hint.classList.toggle('show', !!text);
+function say(text: string, ms = 2600): void {
+  sayText.textContent = text;
+  sayEl.classList.add('show');
+  if (sayTimer) clearTimeout(sayTimer);
+  sayTimer = window.setTimeout(() => sayEl.classList.remove('show'), ms);
+}
+function paintJackFace(): void {
+  const c = jackFace.getContext('2d')!;
+  c.clearRect(0, 0, 108, 108);
+  drawJack(c, 54, 118, 0.62, 'idle', 0, fx.t);
+}
+function showIntro(): void {
+  introFrame = 0; introT = 0;
+  startEl.hidden = true;
+  introEl.hidden = false;
+  syncIntro();
+}
+function syncIntro(): void {
+  introLine.textContent = INTRO_LINES[introFrame];
+  [...introDots.children].forEach((d, i) => d.classList.toggle('on', i === introFrame));
+  const last = introFrame === INTRO_LINES.length - 1;
+  introTap.hidden = last;
+  introDive.hidden = !last;
+}
+function advanceIntro(): void {
+  if (introFrame < INTRO_LINES.length - 1) { introFrame++; introT = 0; syncIntro(); sfx.play('ping', 0.05, 0.4); }
+}
+function endIntro(): void {
+  meta.introSeen = true; saveMeta(meta);
+  introEl.hidden = true;
+  startGame();
 }
 
 const events: Events = {
@@ -97,7 +140,7 @@ const events: Events = {
     vibrate(12);
     tryUnlock('first');
     if (state.pearlsDive >= 15) tryUnlock('pearls15');
-    if (hintStage === 2 && state.levelIndex === 0 && state.pearls === 1) setHint('Pearls open the hatch at the bottom');
+    if (tut === 'pearl') { tut = 'hold'; say('A real one. No prompt made this.'); }
   },
   onTank(x, y) {
     particles.emit({ x, y, count: 16, speed: 90, life: 0.5, color: '#9fb6c4', size: 3 });
@@ -107,13 +150,15 @@ const events: Events = {
   onHatchOpen() {
     sfx.play('hatch');
     floats.add('HATCH OPEN', RULES.hatch.x, RULES.hatch.y - 60, { color: '#7ff5e6', size: 22, life: 1.4 });
-    setHint(null);
+    if (tut !== 'done') { tut = 'hatch'; say("Deeper. The slop can't follow."); }
     if (state.pingsThisLevel <= 2) tryUnlock('quiet');
   },
   onDescend(level, index) {
     fx.fade = 1;
+    if (tut === 'hatch') { tut = 'done'; meta.tutorialDone = true; saveMeta(meta); }
     if (level.boss) {
       showBanner('THE ANGLER', 'Lure it into the mines.', 3600, true);
+      say("So that's what guards them.", 3200);
       sfx.play('roar', 0.05, 1.2);
       vibrate([40, 60, 80]);
       tryUnlock('angler');
@@ -155,7 +200,7 @@ const events: Events = {
     particles.emit({ x: state.x, y: state.y, count: 50, speed: 200, life: 0.7, color: by === 'mine' || by === 'boss' ? '#ff9a5c' : '#7ff5e6', size: 4 });
     for (const o of state.objects) o.vis = 1;
     if (state.boss) state.boss.vis = 1;
-    setHint(null);
+    say(by === 'oxygen' ? 'Out of air. Not out of spite.' : 'The slop wins this one.', 2400);
     const sc = score(state);
     meta.pearlBank += state.pearlsDive;
     meta.dives++;
@@ -175,15 +220,16 @@ const events: Events = {
 function startGame(): void {
   meta = loadMeta();
   rng = mulberry32((Date.now() >>> 0) || 1);
-  state = createState(modsFrom(meta));
+  const startAt = Math.max(0, Number(new URLSearchParams(location.search).get('level') ?? 0) || 0);
+  const tutorial = !meta.tutorialDone && startAt === 0;
+  state = createState(modsFrom(meta), tutorial);
   playing = true;
   startEl.hidden = true;
   overEl.hidden = true;
-  const startAt = Math.max(0, Number(new URLSearchParams(location.search).get('level') ?? 0) || 0);
   startLevel(state, startAt, rng, events);
   fx.shownDepth = state.level.depth;
-  hintStage = meta.dives > 2 ? 2 : 0;
-  if (hintStage === 0) setTimeout(() => { if (hintStage === 0) setHint('Tap anywhere to dive there'); }, 2200);
+  tut = tutorial ? 'tap' : 'done';
+  if (tutorial) setTimeout(() => { if (tut === 'tap') say('Dark. Finally. Ping to see.'); }, 1600);
 }
 
 function renderShop(): void {
@@ -219,14 +265,18 @@ bindPointer(view, {
     const big = pointerUp(state, events);
     if (wasHolding) {
       sfx.play(big ? 'bigping' : 'ping', 0.02);
-      if (hintStage === 0) { hintStage = 1; setHint(null); setTimeout(() => { if (hintStage === 1 && playing) setHint('Hold for a bigger ping'); }, 6000); }
-      if (big && hintStage === 1) { hintStage = 2; setHint(null); }
+      if (tut === 'tap') tut = 'pearl';
+      else if (tut === 'hold' && big) { tut = state.hatchOpen ? 'hatch' : 'pearl'; say('Bigger ping. Twice the air.'); }
     }
   },
 });
-$('startBtn').addEventListener('click', () => { unlockAudio(); startAmbient(); startGame(); });
+$('startBtn').addEventListener('click', () => { unlockAudio(); startAmbient(); if (!meta.introSeen) showIntro(); else startGame(); });
+$('storyBtn').addEventListener('click', () => { unlockAudio(); startAmbient(); showIntro(); });
+$('panelBtn').addEventListener('click', () => { panel.hidden = !panel.hidden; });
+introEl.addEventListener('pointerup', (e) => { if ((e.target as HTMLElement).id !== 'introDive') advanceIntro(); });
+introDive.addEventListener('click', () => { unlockAudio(); startAmbient(); endIntro(); });
 $('againBtn').addEventListener('click', () => { unlockAudio(); startAmbient(); startGame(); });
-$('menuBtn').addEventListener('click', () => { overEl.hidden = true; renderShop(); startEl.hidden = false; });
+$('menuBtn').addEventListener('click', () => { overEl.hidden = true; renderShop(); panel.hidden = false; startEl.hidden = false; });
 $('shareBtn').addEventListener('click', async () => {
   const text = `SONAR · ${state.level.depth} m · ${state.pearlsDive} pearls · score ${score(state)}${state.bossDefeated ? ' · Angler slain' : ''}\n${'🫧'.repeat(Math.min(10, state.pearlsDive))}\n${location.origin}${location.pathname}`;
   try {
@@ -264,8 +314,19 @@ startLoop({
     const o = shake.offset();
     view.ctx.translate(o.x, o.y);
     render(view.ctx, state, fx, playing);
+    drawTutorial(view.ctx, state, playing ? tut : 'done', fx.t);
     particles.draw(view.ctx);
     floats.draw(view.ctx);
+    if (!introEl.hidden) {
+      introT += 1 / 60;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = introCanvas.clientWidth, h = introCanvas.clientHeight;
+      if (introCanvas.width !== Math.round(w * dpr)) { introCanvas.width = Math.round(w * dpr); introCanvas.height = Math.round(h * dpr); }
+      const ic = introCanvas.getContext('2d')!;
+      ic.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawIntroFrame(ic, introFrame, introT, w, h);
+    }
+    if (sayEl.classList.contains('show')) paintJackFace();
     o2El.style.width = `${Math.max(0, state.oxygen)}%`;
     o2El.style.background = state.oxygen < 25 ? '#ff4d4d' : '#7ff5e6';
     depthEl.textContent = `${Math.round(fx.shownDepth)} m`;

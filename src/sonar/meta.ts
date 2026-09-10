@@ -10,6 +10,8 @@ export interface Meta {
   bestDepth: number;
   bestScore: number;
   dives: number;
+  introSeen?: boolean;
+  tutorialDone?: boolean;
 }
 export interface Mods { pingRange: number; drain: number; speed: number }
 
