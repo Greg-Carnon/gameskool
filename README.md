@@ -75,8 +75,3 @@ npm run build
 
 Debug: `/sonar/?level=4` starts in the boss level.
 
----
-
-## Jack
-
-Yes, that Jack. The character is a tribute, drawn from canvas primitives: cap, moustache, blond hair, "NO SLOP" hoodie. Say the word and he gets renamed.
