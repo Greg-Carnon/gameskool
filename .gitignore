@@ -5,3 +5,4 @@ dist
 .playwright-mcp
 *.png
 !public/*.png
+.claude/settings.local.json
