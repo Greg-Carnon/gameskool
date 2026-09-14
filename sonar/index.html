@@ -54,6 +54,8 @@
     .log { display: grid; grid-template-columns: 26px 52px 1fr 60px 44px; gap: 6px; font-size: 12px; opacity: 0.85; padding: 3px 0; border-top: 1px solid rgba(127,245,230,0.08); }
     .log b { color: var(--teal); }
     .log span:last-child { text-align: right; color: var(--gold); }
+    .finale { background: rgba(26, 20, 16, 0.86); }
+    h1.grotto { color: var(--gold); letter-spacing: 0.3em; font-size: 30px; text-shadow: 0 0 30px rgba(255,214,150,0.6); }
     /* Intro */
     #intro { background: var(--ink); padding: 0; }
     #intro .frame { width: 100%; max-width: 420px; display: grid; grid-template-rows: 1fr auto; height: 100%; }
@@ -120,7 +122,7 @@
       <h1>SONAR</h1>
       <p class="tag">Jack vs the deep</p>
       <p class="sub" id="bestDepth">No dives yet</p>
-      <p>Bring up the pearls.<br>Seeing costs air. Ten lives. Three bosses.</p>
+      <p>Bring up the pearls.<br>Seeing costs air. Ten lives. Four bosses.</p>
       <button id="startBtn" class="primary">DIVE</button>
       <div><button id="topBtn" class="secondary" hidden>From the top</button><button id="panelBtn" class="secondary">Upgrades</button><button id="storyBtn" class="secondary">Story</button></div>
       <div class="panel" id="panel" hidden>
@@ -131,6 +133,17 @@
         <div class="mss" id="milestones"></div>
         <div class="logbox" id="divelog"></div>
       </div>
+    </div>
+  </div>
+  <div id="finale" class="overlay finale" hidden>
+    <div class="card">
+      <p class="tag">You found it.</p>
+      <h1 class="grotto">THE GROTTO</h1>
+      <p>520 m down, past everything that hunts a ping, there is a cave where nothing was generated.</p>
+      <p>Real pearls. Real websites. Jack stays a while.</p>
+      <p class="bank" id="finaleScore"></p>
+      <button id="keepBtn" class="primary">KEEP DIVING</button>
+      <div><button id="finaleShare" class="secondary">Share</button></div>
     </div>
   </div>
   <div id="over" class="overlay" hidden>

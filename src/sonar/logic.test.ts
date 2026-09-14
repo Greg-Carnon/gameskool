@@ -31,6 +31,9 @@ describe('Levels', () => {
     expect(levelAt(LEVELS.length + 2).boss).toBe('angler');
     expect(levelAt(LEVELS.length + 5).boss).toBe('kraken');
     expect(levelAt(LEVELS.length + 8).boss).toBe('leviathan');
+    expect(levelAt(LEVELS.length + 11).boss).toBe('megalodon');
+    expect(LEVELS[11].boss).toBe('megalodon');
+    expect(LEVELS[12].env).toBe('grotto');
     expect(levelAt(LEVELS.length + 4).depth).toBeGreaterThan(levelAt(LEVELS.length).depth);
   });
 });
@@ -244,6 +247,34 @@ describe('Bosse', () => {
     park(s, W - 20, 40);
     update(s, 1 / 60, rng, { ...noop, onBossHit: () => hits++ });
     expect(hits).toBe(1);
+  });
+  it('Megalodon kündigt den Angriff an, rast geradeaus und stirbt an Minen auf der Bahn', () => {
+    const s = fresh(11, 70);
+    expect(s.boss!.kind).toBe('megalodon');
+    const rng = mulberry32(70);
+    let strikes = 0; const hits: number[] = [];
+    const ev: Events = { ...noop, onBossStrike: () => strikes++, onBossHit: (_x, _y, hp) => hits.push(hp) };
+    s.boss!.modeT = 0;
+    park(s, W / 2, 140);
+    update(s, 1 / 60, rng, ev);
+    expect(s.boss!.mode).toBe('strike');
+    expect(strikes).toBe(1);
+    // Mine auf die Bahn legen, Boot weg
+    s.objects = s.objects.filter((o) => o.kind !== 'mine');
+    const b = s.boss!;
+    s.objects.push({ kind: 'mine', x: b.x + b.strikeX * 120, y: b.y + b.strikeY * 120, vis: 0, vx: 0, vy: 0, phase: 0, huntT: 0, tx: 0, ty: 0 });
+    for (let i = 0; i < 60 * 3 && hits.length === 0; i++) { park(s, 20, 40); update(s, 1 / 60, rng, ev); }
+    expect(hits).toEqual([5]);
+    expect(s.lives).toBe(RULES.lives);
+  });
+  it('Grotto verbraucht keine Luft und öffnet die Luke von selbst', () => {
+    const s = fresh(12, 71);
+    const rng = mulberry32(71);
+    let opened = 0;
+    for (let i = 0; i < 60 * 7; i++) update(s, 1 / 60, rng, { ...noop, onHatchOpen: () => opened++ });
+    expect(s.oxygen).toBe(100);
+    expect(s.objects.length).toBe(0);
+    expect(opened).toBe(1);
   });
   it('Luke öffnet im Bosslevel erst nach dem Sieg', () => {
     const s = fresh(4, 9);

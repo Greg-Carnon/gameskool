@@ -18,6 +18,7 @@ export interface Boss {
   angle: number;
   strikeX: number; strikeY: number;
   trail: { x: number; y: number }[];
+  orbit: number;
 }
 export type DeathBy = Kind | 'oxygen' | 'boss';
 
@@ -102,6 +103,7 @@ export const RULES = {
   boss: { hp: 3, prowl: 32, hunt: 82, huntTime: 3.5, stun: 1.6, radius: 34 },
   kraken: { arms: 8, armLen: 150, spin: 0.35, telegraph: 1.0, strikeRadius: 42, armHit: 13 },
   leviathan: { speed: 42, chaseBonus: 55, segments: 14, segGap: 16, hit: 15 },
+  megalodon: { orbitX: 175, orbitY: 300, orbitSpeed: 0.45, rest: 3.2, telegraph: 1.15, dash: 420, hit: 40, mineHit: 46 },
   torpedo: { speed: 270, life: 1.5, perCrate: 3, hit: 26 },
   flareTime: 4,
   magnetTime: 8,
@@ -152,7 +154,9 @@ function levelCount(s: State, k: Kind): number {
 
 function makeBoss(kind: BossKind, hp: number): Boss {
   const y = kind === 'kraken' ? H / 2 + 60 : H - 160;
-  return { kind, x: W / 2, y, tx: W / 2, ty: y, hp, maxHp: hp, mode: 'prowl', modeT: 0, vis: 0, angle: 0, strikeX: 0, strikeY: 0, trail: [] };
+  const b: Boss = { kind, x: W / 2, y, tx: W / 2, ty: y, hp, maxHp: hp, mode: 'prowl', modeT: kind === 'megalodon' ? 4 : 0, vis: 0, angle: 0, strikeX: 0, strikeY: 0, trail: [], orbit: Math.PI / 2 };
+  if (kind === 'megalodon') { b.x = W / 2 + Math.cos(b.orbit) * RULES.megalodon.orbitX; b.y = H / 2 + Math.sin(b.orbit) * RULES.megalodon.orbitY; }
+  return b;
 }
 
 export function startLevel(s: State, index: number, rng: () => number, ev: Events): void {
@@ -268,7 +272,8 @@ function respawn(s: State): void {
   s.torpedoes = [];
   for (const o of s.objects) if (o.kind === 'fish') o.huntT = 0;
   if (s.boss) {
-    if (s.boss.kind !== 'kraken') { s.boss.x = W / 2; s.boss.y = H - 160; s.boss.tx = s.boss.x; s.boss.ty = s.boss.y; s.boss.trail = []; }
+    if (s.boss.kind === 'megalodon') { s.boss.orbit = Math.PI / 2; s.boss.x = W / 2; s.boss.y = H / 2 + RULES.megalodon.orbitY; }
+    else if (s.boss.kind !== 'kraken') { s.boss.x = W / 2; s.boss.y = H - 160; s.boss.tx = s.boss.x; s.boss.ty = s.boss.y; s.boss.trail = []; }
     s.boss.mode = 'stunned'; s.boss.modeT = RULES.respawnGrace;
   }
 }
@@ -359,6 +364,33 @@ function updateBoss(s: State, dt: number, rng: () => number, ev: Events): void {
       if (distToSeg(s.x, s.y, arm.x1, arm.y1, arm.x2, arm.y2) < RULES.kraken.armHit) { die(s, 'boss', ev); return; }
     }
     if (Math.hypot(s.x - b.x, s.y - b.y) < 40) die(s, 'boss', ev);
+  } else if (b.kind === 'megalodon') {
+    const M = RULES.megalodon;
+    if (b.mode === 'prowl') {
+      b.orbit += M.orbitSpeed * dt;
+      const nx = W / 2 + Math.cos(b.orbit) * M.orbitX, ny = H / 2 + Math.sin(b.orbit) * M.orbitY;
+      b.angle = Math.atan2(ny - b.y, nx - b.x);
+      b.x = nx; b.y = ny;
+      if (b.modeT <= 0) {
+        b.mode = 'strike'; b.modeT = M.telegraph;
+        const dx = s.x - b.x, dy = s.y - b.y, d = Math.hypot(dx, dy) || 1;
+        b.strikeX = dx / d; b.strikeY = dy / d;
+        b.angle = Math.atan2(dy, dx);
+        b.vis = 1;
+        ev.onBossStrike(b.x, b.y);
+      }
+    } else if (b.mode === 'strike') {
+      if (b.modeT <= 0) { b.mode = 'hunt'; b.modeT = 4; }
+    } else if (b.mode === 'hunt') {
+      b.x += b.strikeX * M.dash * dt; b.y += b.strikeY * M.dash * dt;
+      b.angle = Math.atan2(b.strikeY, b.strikeX);
+      if (bossMineCheck(s, b.x, b.y, M.mineHit, rng, ev)) return;
+      if (s.invuln <= 0 && Math.hypot(s.x - b.x, s.y - b.y) < M.hit) { die(s, 'boss', ev); return; }
+      if (b.x < -90 || b.x > W + 90 || b.y < -90 || b.y > H + 90 || b.modeT <= 0) {
+        b.mode = 'prowl'; b.modeT = M.rest;
+        b.orbit = Math.atan2((b.y - H / 2) / M.orbitY, (b.x - W / 2) / M.orbitX);
+      }
+    }
   } else {
     // Leviathan folgt dem Boot, schneller wenn es sich bewegt
     const moving = Math.hypot(s.tx - s.x, s.ty - s.y) > 4;
@@ -513,7 +545,7 @@ export function update(s: State, dt: number, rng: () => number, ev: Events): voi
     die(s, o.kind, ev);
     return;
   }
-  if (!s.hatchOpen && s.pearls >= s.level.pearlsNeeded && (!s.level.boss || s.bossDefeated)) { s.hatchOpen = true; ev.onHatchOpen(); }
+  if (!s.hatchOpen && s.pearls >= s.level.pearlsNeeded && (!s.level.boss || s.bossDefeated) && s.levelT > (s.level.env === 'grotto' ? 6 : 0)) { s.hatchOpen = true; ev.onHatchOpen(); }
 
   if (s.hatchOpen && Math.hypot(s.x - RULES.hatch.x, s.y - RULES.hatch.y) < RULES.hatch.r) {
     s.transition = 1.3;

@@ -1,5 +1,5 @@
-export type Env = 'shallows' | 'kelp' | 'wreck' | 'trench' | 'lair' | 'abyss' | 'kraken' | 'deep';
-export type BossKind = 'angler' | 'kraken' | 'leviathan';
+export type Env = 'shallows' | 'kelp' | 'wreck' | 'trench' | 'lair' | 'abyss' | 'kraken' | 'deep' | 'grotto';
+export type BossKind = 'angler' | 'kraken' | 'leviathan' | 'megalodon';
 
 export interface LevelConfig {
   name: string;
@@ -27,29 +27,31 @@ export const LEVELS: LevelConfig[] = [
   { name: 'The Drop', env: 'abyss', depth: 320, pearlsNeeded: 7, counts: { pearl: 4, mine: 11, jelly: 4, fish: 5, tank: 1, powerups: 2 }, pingMax: 215, drain: 4.2, currents: 2, boss: null, bossHp: 0, intro: 'Deeper than anyone.' },
   { name: 'Silent Plain', env: 'deep', depth: 360, pearlsNeeded: 7, counts: { pearl: 4, mine: 12, jelly: 5, fish: 6, tank: 1, powerups: 2 }, pingMax: 210, drain: 4.4, currents: 3, boss: null, bossHp: 0, intro: 'Nothing here should be alive.' },
   { name: 'The Leviathan', env: 'lair', depth: 400, pearlsNeeded: 5, counts: { pearl: 4, mine: 10, jelly: 0, fish: 3, tank: 2, powerups: 3 }, pingMax: 220, drain: 3.8, currents: 0, boss: 'leviathan', bossHp: 5, intro: 'It follows you. Everywhere. Swim past the mines.' },
+  { name: 'The Megalodon', env: 'deep', depth: 480, pearlsNeeded: 5, counts: { pearl: 4, mine: 12, jelly: 0, fish: 2, tank: 2, powerups: 3 }, pingMax: 220, drain: 3.8, currents: 0, boss: 'megalodon', bossHp: 6, intro: 'It charges in a straight line. Put a mine between you and it.' },
+  { name: 'The Grotto', env: 'grotto', depth: 520, pearlsNeeded: 0, counts: { pearl: 0, mine: 0, jelly: 0, fish: 0, tank: 0, powerups: 0 }, pingMax: 400, drain: 0, currents: 0, boss: null, bossHp: 0, intro: 'No slop. No prompts. Only real websites.' },
 ];
 
-const BOSS_CYCLE: BossKind[] = ['angler', 'kraken', 'leviathan'];
+const BOSS_CYCLE: BossKind[] = ['angler', 'kraken', 'leviathan', 'megalodon'];
 
 /** Danach wiederholen sich die Tiefen mit steigender Härte, alle drei Levels ein Boss. */
 export function levelAt(index: number): LevelConfig {
   if (index < LEVELS.length) return LEVELS[index];
-  const base = LEVELS[LEVELS.length - 2];
+  const base = LEVELS[LEVELS.length - 4];
   const cycle = index - LEVELS.length + 1;
   const bossIdx = cycle % 3 === 0 ? (cycle / 3 - 1) % BOSS_CYCLE.length : -1;
   const boss = bossIdx >= 0 ? BOSS_CYCLE[bossIdx] : null;
-  const names: Record<BossKind, string> = { angler: 'The Angler returns', kraken: 'The Kraken returns', leviathan: 'The Leviathan returns' };
+  const names: Record<BossKind, string> = { angler: 'The Angler returns', kraken: 'The Kraken returns', leviathan: 'The Leviathan returns', megalodon: 'The Megalodon returns' };
   return {
     ...base,
-    env: boss ? (boss === 'kraken' ? 'kraken' : 'lair') : cycle % 2 ? 'abyss' : 'deep',
+    env: boss ? (boss === 'kraken' ? 'kraken' : boss === 'megalodon' ? 'deep' : 'lair') : cycle % 2 ? 'abyss' : 'deep',
     name: boss ? names[boss] : `Abyss ${cycle + 1}`,
-    depth: 400 + cycle * 40,
+    depth: 520 + cycle * 40,
     pearlsNeeded: Math.min(9, 6 + Math.floor(cycle / 2)),
     counts: { pearl: 4, mine: Math.min(15, 10 + cycle), jelly: boss ? 0 : Math.min(6, 4 + Math.floor(cycle / 2)), fish: Math.min(8, 4 + Math.floor(cycle / 2)), tank: boss ? 2 : 1, powerups: 2 },
     pingMax: Math.max(190, 215 - cycle * 6),
     drain: Math.min(5.5, 4.2 + cycle * 0.2),
     boss,
-    bossHp: boss ? { angler: 3, kraken: 4, leviathan: 5 }[boss] + Math.floor(cycle / 3) : 0,
+    bossHp: boss ? { angler: 3, kraken: 4, leviathan: 5, megalodon: 6 }[boss] + Math.floor(cycle / 3) : 0,
     intro: boss ? 'It found you again.' : 'Deeper.',
   };
 }

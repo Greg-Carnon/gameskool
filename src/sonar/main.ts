@@ -92,6 +92,7 @@ const sayEl = $('say');
 const sayText = $('sayText');
 const jackFace = $<HTMLCanvasElement>('jackFace');
 const panel = $('panel');
+const finaleEl = $('finale');
 
 function showBanner(title: string, sub: string, ms = 2600, big = false): void {
   bannerTitle.textContent = title;
@@ -144,7 +145,7 @@ function endIntro(): void {
 }
 
 function bossName(): string {
-  return { angler: 'The Angler', kraken: 'The Kraken', leviathan: 'The Leviathan' }[state.level.boss ?? 'angler'];
+  return { angler: 'The Angler', kraken: 'The Kraken', leviathan: 'The Leviathan', megalodon: 'The Megalodon' }[state.level.boss ?? 'angler'];
 }
 function causeShort(by: string): string {
   const m: Record<string, string> = { mine: 'Mine.', boss: `${bossName()}.`, jelly: 'Jellyfish.', fish: 'Echo fish.', oxygen: 'No air.' };
@@ -220,16 +221,22 @@ const events: Events = {
     fx.fade = 1;
     if (tut === 'hatch') { tut = 'done'; meta.tutorialDone = true; saveMeta(meta); }
     if (level.boss) {
-      const title = { angler: 'THE ANGLER', kraken: 'THE KRAKEN', leviathan: 'THE LEVIATHAN' }[level.boss];
-      const sub = { angler: 'Lure it into the mines.', kraken: 'It strikes where you ping. Ping near mines, then move.', leviathan: 'It follows you. Swim past the mines.' }[level.boss];
+      const title = { angler: 'THE ANGLER', kraken: 'THE KRAKEN', leviathan: 'THE LEVIATHAN', megalodon: 'THE MEGALODON' }[level.boss];
+      const sub = { angler: 'Lure it into the mines.', kraken: 'It strikes where you ping. Ping near mines, then move.', leviathan: 'It follows you. Swim past the mines.', megalodon: 'It charges straight. Put a mine between you and it.' }[level.boss];
       showBanner(title, sub, 4000, true);
-      say({ angler: "So that's what guards them.", kraken: 'Eight arms. One eye. Ping smart.', leviathan: "It doesn't stop. So don't stop either." }[level.boss], 3600);
+      say({ angler: "So that's what guards them.", kraken: 'Eight arms. One eye. Ping smart.', leviathan: "It doesn't stop. So don't stop either.", megalodon: 'Okay. That one is big. Mines. Now.' }[level.boss], 3600);
       sfx.play('roar', 0.05, 1.2);
       vibrate([40, 60, 80]);
       if (level.boss === 'angler') tryUnlock('angler');
       bossHud.hidden = false;
       $('bossName').textContent = title.replace('THE ', '');
       bossHp.textContent = '●'.repeat(level.bossHp);
+    } else if (level.env === 'grotto') {
+      showBanner('THE GROTTO', level.intro, 5000, true);
+      bossHud.hidden = true;
+      tryUnlock('grotto');
+      say('No slop. Not one prompt. Look at these.', 4500);
+      setTimeout(() => { if (playing && state.level.env === 'grotto') { $('finaleScore').textContent = `${state.pearlsDive} pearls · score ${score(state)}`; finaleEl.hidden = false; sfx.play('milestone'); } }, 5600);
     } else {
       showBanner(`${level.depth} m · ${level.name}`, level.intro);
       bossHud.hidden = true;
@@ -262,9 +269,9 @@ const events: Events = {
     sfx.play('bossdown');
     vibrate([60, 40, 60, 40, 120]);
     const kind = state.level.boss ?? 'angler';
-    floats.add({ angler: 'ANGLER DOWN', kraken: 'KRAKEN DOWN', leviathan: 'LEVIATHAN DOWN' }[kind], x, y - 50, { color: '#fff6d0', size: 30, life: 1.6 });
+    floats.add({ angler: 'ANGLER DOWN', kraken: 'KRAKEN DOWN', leviathan: 'LEVIATHAN DOWN', megalodon: 'MEGALODON DOWN' }[kind], x, y - 50, { color: '#fff6d0', size: 30, life: 1.6 });
     bossHud.hidden = true;
-    tryUnlock({ angler: 'slayer', kraken: 'kraken', leviathan: 'leviathan' }[kind]);
+    tryUnlock({ angler: 'slayer', kraken: 'kraken', leviathan: 'leviathan', megalodon: 'megalodon' }[kind]);
     say(state.bossTorpedoUsed ? 'Down. Torpedoes help.' : 'Down. Not one torpedo.', 2600);
   },
   onLifeLost(by, livesLeft) {
@@ -377,6 +384,11 @@ introEl.addEventListener('pointerup', (e) => { if ((e.target as HTMLElement).id 
 introDive.addEventListener('click', () => { unlockAudio(); startAmbient(); endIntro(); });
 $('againBtn').addEventListener('click', () => { unlockAudio(); startAmbient(); startGame(); });
 
+$('keepBtn').addEventListener('click', () => { unlockAudio(); finaleEl.hidden = true; say('Deeper it is.', 2000); });
+$('finaleShare').addEventListener('click', async () => {
+  const text = `SONAR · I found the Grotto. 520 m down. No slop. ${state.pearlsDive} pearls.\n${location.origin}${location.pathname}`;
+  try { if (navigator.share) await navigator.share({ text }); else await navigator.clipboard.writeText(text); } catch { /* abgebrochen */ }
+});
 $('menuBtn').addEventListener('click', () => { overEl.hidden = true; renderShop(); panel.hidden = false; startEl.hidden = false; });
 $('shareBtn').addEventListener('click', async () => {
   const text = `SONAR · ${state.level.depth} m · ${state.pearlsDive} pearls · score ${score(state)}${state.bossDefeated ? ' · Angler slain' : ''}\n${'🫧'.repeat(Math.min(10, state.pearlsDive))}\n${location.origin}${location.pathname}`;

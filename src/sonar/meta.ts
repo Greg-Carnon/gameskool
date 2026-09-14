@@ -70,6 +70,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'slayer', name: 'Angler slayer', desc: 'Defeat the Angler', icon: '💥' },
   { id: 'kraken', name: 'Kraken slayer', desc: 'Defeat the Kraken', icon: '🦑' },
   { id: 'leviathan', name: 'Leviathan slayer', desc: 'Defeat the Leviathan', icon: '🐉' },
+  { id: 'megalodon', name: 'Megalodon slayer', desc: 'Defeat the Megalodon', icon: '🦈' },
+  { id: 'grotto', name: 'The Grotto', desc: 'Find the place without slop', icon: '🏝️' },
   { id: 'pearls15', name: 'Pearl hoarder', desc: '15 pearls in one dive', icon: '📿' },
   { id: 'pearls30', name: 'Pearl baron', desc: '30 pearls in one dive', icon: '👑' },
   { id: 'gunner', name: 'Gunner', desc: 'Blow up 5 mines with torpedoes in one dive', icon: '🎯' },

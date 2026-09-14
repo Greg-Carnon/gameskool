@@ -2,6 +2,9 @@ import { H, W } from '../kit/canvas';
 import { mulberry32 } from '../kit/rng';
 import { LEVELS, type Env } from './levels';
 import { krakenArmPoints, RULES, type State } from './logic';
+import { drawComponentAt } from '../jack-vs-slop/render';
+import { spawnComponent } from '../jack-vs-slop/components';
+import type { Component } from '../jack-vs-slop/state';
 
 export interface SceneFx {
   t: number;
@@ -13,6 +16,10 @@ export interface SceneFx {
 }
 
 const TEAL = '#7ff5e6';
+
+const grottoRng = mulberry32(777);
+const GROTTO_CARDS: Component[] = [];
+for (let i = 0; i < 6; i++) { const c = spawnComponent(0, grottoRng, i + 1, false); if (c.template === 'hero') c.template = 'card'; GROTTO_CARDS.push(c); }
 
 let glowSprite: HTMLCanvasElement | null = null;
 function glow(): HTMLCanvasElement {
@@ -144,6 +151,34 @@ function drawEnvironment(ctx: CanvasRenderingContext2D, env: Env, index: number,
       }
       ctx.fillStyle = `rgba(255,120,60,${0.5 + 0.4 * Math.sin(t * 7 + i)})`;
       ctx.beginPath(); ctx.arc(x, H - 152 - i * 20, 4, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (env === 'grotto') {
+    // Warme Höhle, Licht von oben, saubere Websites schweben
+    const g = ctx.createRadialGradient(W / 2, 120, 20, W / 2, 120, 620);
+    g.addColorStop(0, 'rgba(255,214,150,0.22)');
+    g.addColorStop(1, 'rgba(255,214,150,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#1a1410';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(90, 0); ctx.quadraticCurveTo(30, 200, 70, 420); ctx.quadraticCurveTo(20, 600, 60, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(W, 0); ctx.lineTo(W - 80, 0); ctx.quadraticCurveTo(W - 30, 240, W - 60, 460); ctx.quadraticCurveTo(W - 10, 620, W - 50, H); ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+    drawSeabed(ctx, e, '#1a1410');
+    for (let i = 0; i < GROTTO_CARDS.length; i++) {
+      const c = GROTTO_CARDS[i];
+      const cx = 70 + (i % 2) * 130 + Math.sin(t * 0.5 + i) * 8;
+      const cy = 150 + i * 92 + Math.cos(t * 0.4 + i * 1.3) * 6;
+      ctx.save();
+      ctx.globalAlpha = 0.92;
+      ctx.translate(cx, cy);
+      ctx.rotate(Math.sin(t * 0.3 + i) * 0.04);
+      ctx.scale(0.5, 0.5);
+      ctx.shadowColor = 'rgba(255,214,150,0.35)'; ctx.shadowBlur = 24;
+      drawComponentAt(ctx, c, 0, 0);
+      ctx.restore();
+    }
+    for (const d of e.dots.slice(0, 20)) {
+      const a = 0.2 + 0.3 * Math.max(0, Math.sin(t * 0.8 + d.ph));
+      ctx.fillStyle = `rgba(255,230,180,${a})`;
+      ctx.beginPath(); ctx.arc(d.x, d.y, 1.5, 0, Math.PI * 2); ctx.fill();
     }
   } else if (env === 'lair') {
     drawSeabed(ctx, e, '#120a10');
@@ -303,8 +338,70 @@ function drawLeviathan(ctx: CanvasRenderingContext2D, s: State, t: number): void
   ctx.restore();
 }
 
+function drawMegalodon(ctx: CanvasRenderingContext2D, s: State, t: number): void {
+  const b = s.boss!;
+  const M = RULES.megalodon;
+  // Angriffsbahn
+  if (b.mode === 'strike') {
+    const k = 1 - b.modeT / M.telegraph;
+    ctx.strokeStyle = `rgba(255,77,77,${0.35 + 0.55 * k})`;
+    ctx.lineWidth = 2 + 4 * k;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x + b.strikeX * 1200, b.y + b.strikeY * 1200); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // Flosse und Kielwasser immer schwach sichtbar
+  const a = Math.max(0.28, b.vis, b.mode === 'stunned' ? 0.6 + 0.4 * Math.sin(t * 20) : 0, b.mode === 'hunt' ? 0.9 : 0);
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.translate(b.x, b.y);
+  ctx.rotate(b.angle);
+  const open = b.mode === 'strike' || b.mode === 'hunt';
+  ctx.fillStyle = '#243846';
+  ctx.beginPath(); ctx.ellipse(0, 0, 78, 26, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c9d6dd';
+  ctx.beginPath(); ctx.ellipse(6, 9, 62, 12, 0, 0, Math.PI); ctx.fill();
+  // Schwanz
+  ctx.fillStyle = '#243846';
+  ctx.beginPath(); ctx.moveTo(-70, -4); ctx.lineTo(-104, -34); ctx.lineTo(-96, 0); ctx.lineTo(-104, 30); ctx.lineTo(-70, 4); ctx.closePath(); ctx.fill();
+  // Rückenflosse und Brustflosse
+  ctx.beginPath(); ctx.moveTo(-10, -22); ctx.lineTo(4, -54); ctx.lineTo(22, -22); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(10, 18); ctx.lineTo(-2, 44); ctx.lineTo(28, 24); ctx.closePath(); ctx.fill();
+  // Kiemen
+  ctx.strokeStyle = '#162530'; ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(26 + i * 6, -10); ctx.lineTo(24 + i * 6, 10); ctx.stroke(); }
+  // Maul
+  ctx.fillStyle = '#0a1116';
+  ctx.beginPath();
+  if (open) { ctx.moveTo(44, -10); ctx.lineTo(82, -18); ctx.lineTo(80, 20); ctx.lineTo(44, 14); }
+  else { ctx.moveTo(48, 4); ctx.quadraticCurveTo(66, 8, 78, 2); ctx.quadraticCurveTo(66, 12, 48, 10); }
+  ctx.closePath(); ctx.fill();
+  if (open) {
+    ctx.fillStyle = '#eef4f6';
+    for (let i = 0; i < 6; i++) {
+      const tx = 48 + i * 6;
+      ctx.beginPath(); ctx.moveTo(tx, -8); ctx.lineTo(tx + 3, 0); ctx.lineTo(tx + 6, -8); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(tx, 14); ctx.lineTo(tx + 3, 5); ctx.lineTo(tx + 6, 14); ctx.closePath(); ctx.fill();
+    }
+  }
+  // Auge
+  ctx.fillStyle = '#0a1116';
+  ctx.beginPath(); ctx.arc(40, -12, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = open ? '#ff4d4d' : '#c9d6dd';
+  ctx.beginPath(); ctx.arc(41, -12, 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  // Kielwasser beim Rasen
+  if (b.mode === 'hunt') {
+    ctx.strokeStyle = 'rgba(200,230,255,0.35)'; ctx.lineWidth = 2;
+    for (let i = 1; i <= 4; i++) {
+      ctx.beginPath(); ctx.arc(b.x - b.strikeX * i * 30, b.y - b.strikeY * i * 30, 10 + i * 8, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+}
+
 function drawBoss(ctx: CanvasRenderingContext2D, s: State, t: number): void {
   const b = s.boss!;
+  if (b.kind === 'megalodon') { drawMegalodon(ctx, s, t); return; }
   if (b.kind === 'kraken') { drawKraken(ctx, s, t); return; }
   if (b.kind === 'leviathan') { drawLeviathan(ctx, s, t); return; }
   const facing = Math.cos(b.angle) < 0 ? -1 : 1;
@@ -375,8 +472,8 @@ export function render(ctx: CanvasRenderingContext2D, s: State, fx: SceneFx, pla
   const t = fx.t;
   const deep = Math.min(1, s.levelIndex / 6);
   const g = ctx.createRadialGradient(s.x, s.y, 10, s.x, s.y, 280 - 70 * deep);
-  g.addColorStop(0, s.level.env === 'lair' ? '#10151c' : s.level.env === 'shallows' ? '#083241' : '#06202b');
-  g.addColorStop(1, '#020a12');
+  g.addColorStop(0, s.level.env === 'lair' ? '#10151c' : s.level.env === 'shallows' ? '#083241' : s.level.env === 'grotto' ? '#2a2018' : '#06202b');
+  g.addColorStop(1, s.level.env === 'grotto' ? '#0e0a08' : '#020a12');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
   drawEnvironment(ctx, s.level.env, s.levelIndex, t, s);
