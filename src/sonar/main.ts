@@ -11,6 +11,7 @@ import { startAmbient, updateAmbient } from './ambient';
 import { createState, nearestMine, pointerDown, pointerUp, RULES, score, startLevel, update, type Events, type State } from './logic';
 import { ACHIEVEMENTS, buy, loadMeta, logDive, modsFrom, saveMeta, unlock, UPGRADES, upgradeCost, type Meta } from './meta';
 import { render, type SceneFx } from './render';
+import { levelAt } from './levels';
 import { drawIntroFrame, INTRO_LINES } from './intro';
 import { drawTutorial, type TutStage } from './tutorial';
 import { drawJack } from '../jack-vs-slop/jack';
@@ -57,6 +58,9 @@ const overEl = $('over');
 const o2El = $('o2');
 const depthEl = $('depth');
 const pearlsEl = $('pearls');
+const livesEl = $('lives');
+const topBtn = $<HTMLButtonElement>('topBtn');
+const startBtn = $<HTMLButtonElement>('startBtn');
 const bossHud = $('bossHud');
 const bossHp = $('bossHp');
 const banner = $('banner');
@@ -171,7 +175,9 @@ const events: Events = {
     if (index === 1) tryUnlock('kelp');
     if (index === 2) tryUnlock('wreck');
     if (index === 3) tryUnlock('trench');
-    if (level.depth > meta.bestDepth) { meta.bestDepth = level.depth; saveMeta(meta); }
+    if (level.depth > meta.bestDepth) meta.bestDepth = level.depth;
+    if (index > (meta.checkpoint ?? 0)) meta.checkpoint = index;
+    saveMeta(meta);
   },
   onBossHunt() { sfx.play('roar', 0.1, 0.6); vibrate(30); },
   onBossHit(x, y, hpLeft) {
@@ -191,6 +197,18 @@ const events: Events = {
     bossHud.hidden = true;
     tryUnlock('slayer');
   },
+  onLifeLost(by, livesLeft) {
+    freeze = 0.1;
+    shake.add(by === 'mine' || by === 'boss' ? 0.9 : 0.5);
+    sfx.play(by === 'mine' ? 'boom' : by === 'boss' ? 'roar' : by === 'jelly' || by === 'fish' ? 'sting' : 'drown');
+    vibrate(by === 'mine' || by === 'boss' ? [60, 40, 90] : 60);
+    particles.emit({ x: state.x, y: state.y, count: 40, speed: 180, life: 0.6, color: by === 'mine' || by === 'boss' ? '#ff9a5c' : '#7ff5e6', size: 4 });
+    const cause = { mine: 'Mine.', boss: 'The Angler.', jelly: 'Jellyfish.', fish: 'Echo fish.', oxygen: 'No air.', pearl: '', tank: '' }[by];
+    showBanner(`${livesEl.textContent ? '' : ''}${livesLeft} LIVES LEFT`, cause, 1800);
+    if (livesLeft === 3) say('Three left. Careful now.', 2200);
+    else if (livesLeft === 1) say('Last one. Make it count.', 2200);
+    else if (livesLeft % 3 === 0) say(by === 'oxygen' ? 'Breathe. Then ping less.' : 'Again. Slower this time.', 2000);
+  },
   onDeath(by) {
     playing = false;
     freeze = 0.12;
@@ -209,7 +227,7 @@ const events: Events = {
     saveMeta(meta);
     const cause = { mine: 'You hit a mine.', boss: 'The Angler got you.', jelly: 'Stung by a jellyfish.', fish: 'The echo fish found you.', oxygen: 'Out of oxygen.', pearl: '', tank: '' }[by];
     $('finalDepth').textContent = `${state.level.depth} m`;
-    $('cause').textContent = cause;
+    $('cause').textContent = `${cause} No lives left.`;
     $('diveLog').textContent = `${state.level.name} · ${state.pearlsDive} pearls · ${Math.floor(state.t)} s · score ${sc}`;
     $('bankLine').textContent = `+${state.pearlsDive} pearls banked`;
     $('bestLine').textContent = sc >= meta.bestScore && sc > 0 ? 'New record!' : `Record: ${meta.bestScore}`;
@@ -217,10 +235,11 @@ const events: Events = {
   },
 };
 
-function startGame(): void {
+function startGame(fromTop = false): void {
   meta = loadMeta();
   rng = mulberry32((Date.now() >>> 0) || 1);
-  const startAt = Math.max(0, Number(new URLSearchParams(location.search).get('level') ?? 0) || 0);
+  const param = Number(new URLSearchParams(location.search).get('level') ?? NaN);
+  const startAt = Number.isFinite(param) ? Math.max(0, param) : fromTop ? 0 : (meta.checkpoint ?? 0);
   const tutorial = !meta.tutorialDone && startAt === 0;
   state = createState(modsFrom(meta), tutorial);
   playing = true;
@@ -234,6 +253,9 @@ function startGame(): void {
 
 function renderShop(): void {
   bankEl.textContent = String(meta.pearlBank);
+  const cp = meta.checkpoint ?? 0;
+  startBtn.textContent = cp > 0 ? `DIVE · ${levelAt(cp).depth} m` : 'DIVE';
+  topBtn.hidden = cp === 0;
   bestDepthEl.textContent = meta.bestDepth > 0 ? `Best depth ${meta.bestDepth} m · ${meta.dives} dives` : 'No dives yet';
   shop.innerHTML = '';
   for (const u of UPGRADES) {
@@ -271,11 +293,13 @@ bindPointer(view, {
   },
 });
 $('startBtn').addEventListener('click', () => { unlockAudio(); startAmbient(); if (!meta.introSeen) showIntro(); else startGame(); });
+$('topBtn').addEventListener('click', () => { unlockAudio(); startAmbient(); startGame(true); });
 $('storyBtn').addEventListener('click', () => { unlockAudio(); startAmbient(); showIntro(); });
 $('panelBtn').addEventListener('click', () => { panel.hidden = !panel.hidden; });
 introEl.addEventListener('pointerup', (e) => { if ((e.target as HTMLElement).id !== 'introDive') advanceIntro(); });
 introDive.addEventListener('click', () => { unlockAudio(); startAmbient(); endIntro(); });
 $('againBtn').addEventListener('click', () => { unlockAudio(); startAmbient(); startGame(); });
+
 $('menuBtn').addEventListener('click', () => { overEl.hidden = true; renderShop(); panel.hidden = false; startEl.hidden = false; });
 $('shareBtn').addEventListener('click', async () => {
   const text = `SONAR · ${state.level.depth} m · ${state.pearlsDive} pearls · score ${score(state)}${state.bossDefeated ? ' · Angler slain' : ''}\n${'🫧'.repeat(Math.min(10, state.pearlsDive))}\n${location.origin}${location.pathname}`;
@@ -331,5 +355,7 @@ startLoop({
     o2El.style.background = state.oxygen < 25 ? '#ff4d4d' : '#7ff5e6';
     depthEl.textContent = `${Math.round(fx.shownDepth)} m`;
     pearlsEl.textContent = `${state.pearls}/${state.level.pearlsNeeded} pearls`;
+    livesEl.textContent = `♥ ${state.lives}`;
+    livesEl.classList.toggle('low', state.lives <= 3);
   },
 });

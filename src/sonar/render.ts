@@ -400,7 +400,15 @@ export function render(ctx: CanvasRenderingContext2D, s: State, fx: SceneFx, pla
   const moving = Math.hypot(s.tx - s.x, s.ty - s.y) > 4;
   const facing = moving ? (s.tx < s.x ? -1 : 1) : 1;
   const ang = moving ? Math.atan2(s.ty - s.y, Math.abs(s.tx - s.x)) * 0.25 : 0;
-  if (s.alive || !playing) drawSub(ctx, s.x, s.y, ang, t, facing);
+  if (s.alive || !playing) {
+    if (s.invuln > 0) ctx.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(t * 18));
+    drawSub(ctx, s.x, s.y, ang, t, facing);
+    ctx.globalAlpha = 1;
+    if (s.invuln > 0) {
+      ctx.strokeStyle = 'rgba(127,245,230,0.45)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(s.x, s.y, 34, 0, Math.PI * 2 * (s.invuln / RULES.respawnGrace)); ctx.stroke();
+    }
+  }
   if (s.chain >= 2 && s.chainT > 0) {
     ctx.fillStyle = TEAL;
     ctx.font = '800 11px Inter, system-ui, sans-serif';

@@ -4,7 +4,7 @@ import { LEVELS, levelAt } from './levels';
 import { createState, pointerDown, pointerUp, RULES, startLevel, update, type Events, type State } from './logic';
 import { buy, loadMeta, modsFrom, unlock } from './meta';
 
-const noop: Events = { onPearl: () => {}, onTank: () => {}, onHatchOpen: () => {}, onDescend: () => {}, onBossHit: () => {}, onBossDown: () => {}, onBossHunt: () => {}, onDeath: () => {} };
+const noop: Events = { onPearl: () => {}, onTank: () => {}, onHatchOpen: () => {}, onDescend: () => {}, onBossHit: () => {}, onBossDown: () => {}, onBossHunt: () => {}, onDeath: () => {}, onLifeLost: () => {} };
 const mods = { pingRange: 1, drain: 1, speed: 1 };
 function fresh(index = 0, seed = 1): State {
   const s = createState(mods);
@@ -73,13 +73,40 @@ describe('Fortschritt', () => {
     expect(descended).toEqual([1]);
     expect(s.pearls).toBe(0);
   });
-  it('ohne Perlen geht die Luft aus', () => {
+  it('ohne Perlen geht die Luft aus, das kostet ein Leben und füllt die Luft wieder', () => {
     const s = fresh();
     const rng = mulberry32(3);
+    let lost: number[] = [];
+    for (let i = 0; i < 60 * 90 && lost.length === 0; i++) update(s, 1 / 60, rng, { ...noop, onLifeLost: (_b, l) => lost.push(l) });
+    expect(lost).toEqual([RULES.lives - 1]);
+    expect(s.alive).toBe(true);
+    expect(s.oxygen).toBe(100);
+    expect(s.invuln).toBeGreaterThan(0);
+  });
+  it('mit dem letzten Leben ist der Tauchgang vorbei', () => {
+    const s = fresh(0, 11);
+    s.lives = 1;
     let by = '';
-    for (let i = 0; i < 60 * 90 && s.alive; i++) update(s, 1 / 60, rng, { ...noop, onDeath: (b) => (by = b) });
+    const mine = s.objects.find((o) => o.kind === 'mine')!;
+    s.x = mine.x; s.y = mine.y; s.tx = s.x; s.ty = s.y;
+    update(s, 1 / 60, mulberry32(11), { ...noop, onDeath: (b) => (by = b) });
     expect(s.alive).toBe(false);
-    expect(by).toBe('oxygen');
+    expect(by).toBe('mine');
+    expect(s.lives).toBe(0);
+  });
+  it('nach dem Respawn ist man kurz unverwundbar und behält die Perlen', () => {
+    const s = fresh(0, 12);
+    const rng = mulberry32(12);
+    s.pearls = 2; s.pearlsDive = 2;
+    const mine = s.objects.find((o) => o.kind === 'mine')!;
+    s.x = mine.x; s.y = mine.y; s.tx = s.x; s.ty = s.y;
+    update(s, 1 / 60, rng, noop);
+    expect(s.lives).toBe(RULES.lives - 1);
+    expect(s.pearls).toBe(2);
+    const mine2 = s.objects.find((o) => o.kind === 'mine')!;
+    s.x = mine2.x; s.y = mine2.y; s.tx = s.x; s.ty = s.y;
+    update(s, 1 / 60, rng, noop);
+    expect(s.lives).toBe(RULES.lives - 1);
   });
 });
 

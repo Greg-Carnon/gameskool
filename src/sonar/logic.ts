@@ -18,6 +18,7 @@ export interface Events {
   onBossDown: (x: number, y: number) => void;
   onBossHunt: () => void;
   onDeath: (by: DeathBy) => void;
+  onLifeLost: (by: DeathBy, livesLeft: number) => void;
 }
 
 export interface State {
@@ -46,6 +47,8 @@ export interface State {
   deathBy: DeathBy | null;
   mods: Mods;
   tutorial: boolean;
+  lives: number;
+  invuln: number;
 }
 
 export const RULES = {
@@ -61,6 +64,8 @@ export const RULES = {
   chainAir: 4,
   chainScore: 5,
   headlight: 46,
+  lives: 10,
+  respawnGrace: 2.2,
   visDecay: 0.6,
   hatch: { x: W / 2, y: H - 70, r: 26 },
   hit: { pearl: 22, mine: 19, jelly: 22, fish: 16, tank: 24 } as Record<Kind, number>,
@@ -72,7 +77,7 @@ export function createState(mods: Mods, tutorial = false): State {
   const s: State = {
     t: 0, x: W / 2, y: 140, tx: W / 2, ty: 140, objects: [], pings: [], currents: [], boss: null, bossDefeated: false,
     oxygen: 100, pearls: 0, pearlsDive: 0, pingsThisLevel: 0, chain: 0, chainT: 0, bonus: 0, levelIndex: 0, level: levelAt(0), levelT: 0,
-    hatchOpen: false, transition: 0, charge: 0, holding: false, alive: true, deathBy: null, mods, tutorial,
+    hatchOpen: false, transition: 0, charge: 0, holding: false, alive: true, deathBy: null, mods, tutorial, lives: RULES.lives, invuln: 0,
   };
   return s;
 }
@@ -149,8 +154,28 @@ export function pointerUp(s: State, ev: Events): boolean {
 }
 
 function die(s: State, by: DeathBy, ev: Events): void {
-  s.alive = false; s.deathBy = by; s.holding = false;
+  s.holding = false;
+  if (s.lives > 1) {
+    s.lives--;
+    respawn(s);
+    ev.onLifeLost(by, s.lives);
+    return;
+  }
+  s.lives = 0;
+  s.alive = false; s.deathBy = by;
   ev.onDeath(by);
+}
+
+/** Zurück an den Levelanfang, Luft voll, kurz unverwundbar. Gesammelte Perlen bleiben. */
+function respawn(s: State): void {
+  s.x = W / 2; s.y = 140; s.tx = s.x; s.ty = s.y;
+  s.oxygen = 100;
+  s.invuln = RULES.respawnGrace;
+  s.chain = 0; s.chainT = 0;
+  s.charge = 0;
+  s.pings = [];
+  for (const o of s.objects) if (o.kind === 'fish') o.huntT = 0;
+  if (s.boss) { s.boss.x = W / 2; s.boss.y = H - 160; s.boss.tx = s.boss.x; s.boss.ty = s.boss.y; s.boss.mode = 'stunned'; s.boss.modeT = RULES.respawnGrace; }
 }
 
 function moveToward(o: { x: number; y: number }, tx: number, ty: number, speed: number, dt: number): number {
@@ -196,7 +221,7 @@ function updateBoss(s: State, dt: number, rng: () => number, ev: Events): void {
       return;
     }
   }
-  if (Math.hypot(s.x - b.x, s.y - b.y) < RULES.boss.radius) die(s, 'boss', ev);
+  if (s.invuln <= 0 && Math.hypot(s.x - b.x, s.y - b.y) < RULES.boss.radius) die(s, 'boss', ev);
 }
 
 export function update(s: State, dt: number, rng: () => number, ev: Events): void {
@@ -207,6 +232,7 @@ export function update(s: State, dt: number, rng: () => number, ev: Events): voi
     return;
   }
   s.t += dt; s.levelT += dt;
+  s.invuln = Math.max(0, s.invuln - dt);
   if (s.holding) s.charge += dt;
 
   // Nachschub, Perlen bleiben knapp
@@ -283,6 +309,7 @@ export function update(s: State, dt: number, rng: () => number, ev: Events): voi
       ev.onTank(o.x, o.y);
       return;
     }
+    if (s.invuln > 0) continue;
     die(s, o.kind, ev);
     return;
   }

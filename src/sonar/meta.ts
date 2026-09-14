@@ -12,6 +12,7 @@ export interface Meta {
   dives: number;
   introSeen?: boolean;
   tutorialDone?: boolean;
+  checkpoint?: number;
 }
 export interface Mods { pingRange: number; drain: number; speed: number }
 
