@@ -67,3 +67,13 @@ Greg: zu viel Text, man versteht nicht, was zu tun ist. Umgebaut:
 - **Startscreen reduziert:** Titel, "Jack vs the deep", ein Satz, DIVE. Upgrades und Story dahinter.
 
 Playwright: kompletter Fluss von leerem localStorage bis zum Pfeil auf die erste Perle, keine Fehler. Jacks Zeile kommt nach 1,6 s: "Dark. Finally. Ping to see."
+
+## Leben und Checkpoint, 14. September
+
+Gregs Wunsch nach der Abgabe: zehn Leben, nicht jedes Mal bei Level 1 anfangen.
+
+- **Zehn Leben pro Tauchgang.** Tod durch Mine, Qualle, Fisch, Boss oder Luft kostet ein Leben. Respawn am Levelanfang mit voller Luft, 2,2 Sekunden unverwundbar (Boot blinkt, Ring zeigt die Restzeit). Gesammelte Perlen des Levels bleiben, die Chain bricht. Der Boss wird zurückgesetzt. Banner "N LIVES LEFT" mit Ursache, Jack kommentiert bei 3 und 1.
+- **Checkpoint.** Das tiefste erreichte Level wird gespeichert. "DIVE · 80 m" startet dort, "From the top" startet oben. `?level=N` überschreibt beides. Leben sind pro Tauchgang immer zehn.
+- Tutorial läuft nur beim Start in Level 0 und solange es nicht abgeschlossen ist.
+
+57 Tests, darunter: Luft-Tod kostet ein Leben und füllt auf, letztes Leben beendet den Tauchgang, Respawn ist unverwundbar und behält Perlen.
