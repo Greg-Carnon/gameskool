@@ -77,3 +77,29 @@ Gregs Wunsch nach der Abgabe: zehn Leben, nicht jedes Mal bei Level 1 anfangen.
 - Tutorial läuft nur beim Start in Level 0 und solange es nicht abgeschlossen ist.
 
 57 Tests, darunter: Luft-Tod kostet ein Leben und füllt auf, letztes Leben beendet den Tauchgang, Respawn ist unverwundbar und behält Perlen.
+
+## Große Erweiterung, 14. September
+
+Gregs Auftrag: mehr Powerups, geheime Missionen, mehr Bosse, Schießen, Meilensteine, Achievements. "Denke groß, bleib leicht verständlich."
+
+**Schießen bleibt eine Eingabe.** Torpedos sind ein Pickup (Kiste, 3 Stück plus Upgrade-Stufe). Wer Munition hat, feuert beim Loslassen eines großen Pings automatisch einen Torpedo in Tap-Richtung. Torpedos sprengen Minen, töten Fische und Quallen, nehmen Bossen einen Punkt. Kein zweiter Knopf, keine Erklärung nötig: das Pickup-Label sagt "hold to fire".
+
+**Fünf Pickups**, je 1 bis 3 pro Level, alle mit eigenem Icon und Farbe: Torpedos (orange), Fackel (4 s alles sichtbar, sofort), Magnet (Perlen im Radius 140 kommen 8 s lang), Schild (ein Treffer frei, sichtbarer Ring), Boost (8 s Tempo x1,6).
+
+**Drei Bosse, ein Prinzip: Minen sind die Waffe.**
+| Boss | Level | HP | Verhalten | So besiegt man ihn |
+|---|---|---|---|---|
+| Angler | 4 | 3 | jagt den letzten Ping | in Minen locken |
+| Kraken | 7 | 4 | sitzt in der Mitte, acht rotierende Arme, schlägt nach 1 s dort zu, wo gepingt wurde | neben einer Mine pingen, dann weg |
+| Leviathan | 10 | 5 | folgt dem Boot immer, schneller wenn es fährt, langer Körper ist tödlich | an Minen vorbeischwimmen |
+Danach alle drei Levels ein Boss im Zyklus, HP steigt pro Runde. Torpedos sind die Abkürzung.
+
+**Elf feste Levels** (Shallows bis Leviathan bei 400 m) mit zwei neuen Umgebungen: Black Smokers (Schlote, Rauch, Glut) und die Kraken-Höhle (violett).
+
+**Vier geheime Missionen**, in der Liste als "?" bis gefunden, je +10 Perlen: Ghost (Level ohne Ping), Full tank (Luke mit voller Luft), Captain's pearl (im Wrack pingen, dann erscheint eine Goldperle, 5 wert), Whale watcher (8 s still im Kelp, ein Wal zieht vorbei).
+
+**Meilensteine**: 45 bis 520 m, Perlen-Belohnung einmalig, Bootsfarbe wechselt (gelb, orange, rot, türkis, weiß).
+
+**17 Achievements**, zwei neue Upgrades: Torpedo bay (Start-Munition), Reinforced hull (Schild zum Start, Stufe 2 jedes Level, Stufe 3 längere Unverwundbarkeit).
+
+66 Tests, darunter alle drei Boss-Mechaniken, jedes Pickup, Torpedo gegen Mine und Boss, alle vier Geheimnisse, Meilensteine.
