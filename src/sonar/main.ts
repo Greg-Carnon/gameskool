@@ -9,7 +9,7 @@ import { createSfx, isMuted, setMuted, unlockAudio } from '../kit/sfx';
 import { Shake } from '../kit/shake';
 import { startAmbient, updateAmbient } from './ambient';
 import { createState, nearestMine, pointerDown, pointerUp, RULES, score, startLevel, update, type Events, type State } from './logic';
-import { ACHIEVEMENTS, buy, loadMeta, logDive, modsFrom, saveMeta, unlock, UPGRADES, upgradeCost, type Meta } from './meta';
+import { ACHIEVEMENTS, buy, claimMilestones, loadMeta, logDive, MILESTONES, modsFrom, paintFor, saveMeta, unlock, UPGRADES, upgradeCost, type Meta } from './meta';
 import { render, type SceneFx } from './render';
 import { levelAt } from './levels';
 import { drawIntroFrame, INTRO_LINES } from './intro';
@@ -38,6 +38,12 @@ const sfx = createSfx({
   bossdown: [1.5, 0.05, 300, 0.05, 0.5, 1.2, 0, 1.2, 0, 0, 200, 0.4, 0, 0, 0, 0, 0, 0.6, 0.1],
   award: [0.6, 0.02, 1100, 0.01, 0.1, 0.3, 0, 1.4, 0, 0, 400, 0.1, 0, 0, 0, 0, 0, 0.7, 0.03],
   chain: [0.5, 0.02, 1300, 0.01, 0.05, 0.2, 0, 1.5, 0, 0, 500, 0.08, 0, 0, 0, 0, 0, 0.7, 0.02],
+  pickup: [0.6, 0.02, 600, 0.02, 0.08, 0.25, 0, 1.3, 0, 0, 350, 0.12, 0, 0, 0, 0, 0, 0.8, 0.03],
+  fire: [0.8, 0.05, 300, 0.01, 0.05, 0.25, 4, 1.4, -30, 0, 0, 0, 0, 0.3, 0, 0.2, 0, 0.7, 0.03],
+  blast: [1.2, 0.1, 80, 0.02, 0.2, 0.5, 4, 1, 0, 0, 0, 0, 0, 2, 0, 0.4, 0, 0.6, 0.1],
+  shieldbreak: [0.9, 0.05, 900, 0.01, 0.1, 0.4, 1, 1.2, -20, 0, 0, 0, 0, 0.5, 0, 0.3, 0, 0.7, 0.05],
+  secret: [0.7, 0.02, 700, 0.02, 0.2, 0.6, 0, 1.5, 0, 0, 300, 0.25, 0, 0, 0, 0, 0, 0.6, 0.05],
+  milestone: [0.8, 0.02, 500, 0.02, 0.3, 0.8, 0, 1.4, 0, 0, 250, 0.3, 0, 0, 0, 0, 0, 0.6, 0.06],
 });
 
 let meta: Meta = loadMeta();
@@ -51,7 +57,7 @@ let tut: TutStage = 'done';
 let introFrame = 0;
 let introT = 0;
 let sayTimer: number | undefined;
-const fx: SceneFx = { t: 0, fade: 0, bossFlash: 0, shownDepth: 20 };
+const fx: SceneFx = { t: 0, fade: 0, bossFlash: 0, shownDepth: 20, paint: '#ffd23f', whale: 0 };
 
 const startEl = $('start');
 const overEl = $('over');
@@ -59,6 +65,9 @@ const o2El = $('o2');
 const depthEl = $('depth');
 const pearlsEl = $('pearls');
 const livesEl = $('lives');
+const ammoEl = $('ammo');
+const statusEl = $('status');
+const milestonesEl = $('milestones');
 const topBtn = $<HTMLButtonElement>('topBtn');
 const startBtn = $<HTMLButtonElement>('startBtn');
 const bossHud = $('bossHud');
@@ -134,6 +143,18 @@ function endIntro(): void {
   startGame();
 }
 
+function bossName(): string {
+  return { angler: 'The Angler', kraken: 'The Kraken', leviathan: 'The Leviathan' }[state.level.boss ?? 'angler'];
+}
+function causeShort(by: string): string {
+  const m: Record<string, string> = { mine: 'Mine.', boss: `${bossName()}.`, jelly: 'Jellyfish.', fish: 'Echo fish.', oxygen: 'No air.' };
+  return m[by] ?? '';
+}
+function causeLong(by: string): string {
+  const m: Record<string, string> = { mine: 'You hit a mine.', boss: `${bossName()} got you.`, jelly: 'Stung by a jellyfish.', fish: 'The echo fish found you.', oxygen: 'Out of oxygen.' };
+  return m[by] ?? '';
+}
+
 const events: Events = {
   onPearl(x, y, chain) {
     particles.emit({ x, y, count: 20 + chain * 6, speed: 120, life: 0.5, color: '#fff2c4', size: 3 });
@@ -144,12 +165,50 @@ const events: Events = {
     vibrate(12);
     tryUnlock('first');
     if (state.pearlsDive >= 15) tryUnlock('pearls15');
+    if (state.pearlsDive >= 30) tryUnlock('pearls30');
     if (tut === 'pearl') { tut = 'hold'; say('A real one. No prompt made this.'); }
   },
   onTank(x, y) {
     particles.emit({ x, y, count: 16, speed: 90, life: 0.5, color: '#9fb6c4', size: 3 });
     floats.add(`+${RULES.tankAir} O₂`, x, y - 30, { color: '#9fb6c4', size: 20 });
     sfx.play('tank');
+  },
+  onPowerup(kind, x, y) {
+    const label = { torpedo: `TORPEDOES +${RULES.torpedo.perCrate + state.mods.torpedoes} · hold to fire`, flare: 'FLARE · everything visible', magnet: 'MAGNET · pearls come to you', shield: 'SHIELD · one free hit', boost: 'BOOST · fast', pearl: '', gold: '', mine: '', jelly: '', fish: '', tank: '' }[kind];
+    const col = { torpedo: '#ff9a5c', flare: '#fff6d0', magnet: '#c58bff', shield: '#7ff5e6', boost: '#5cf2a0' }[kind as 'torpedo'] ?? '#fff';
+    particles.emit({ x, y, count: 24, speed: 140, life: 0.5, color: col, size: 3 });
+    floats.add(label, x, y - 36, { color: col, size: 15, life: 1.6 });
+    sfx.play('pickup');
+    vibrate(15);
+  },
+  onTorpedoHit(x, y, what) {
+    particles.emit({ x, y, count: what === 'boss' ? 50 : 30, speed: 200, life: 0.6, color: '#ff9a5c', size: 4 });
+    shake.add(what === 'boss' ? 0.6 : 0.35);
+    sfx.play('blast', 0.1, what === 'creature' ? 0.6 : 1);
+    vibrate(what === 'mine' ? [30, 30, 40] : 25);
+    if (what === 'mine' && state.minesShot >= 5) tryUnlock('gunner');
+  },
+  onShieldBreak() {
+    particles.emit({ x: state.x, y: state.y, count: 40, speed: 180, life: 0.5, color: '#7ff5e6', size: 3 });
+    shake.add(0.5);
+    floats.add('SHIELD DOWN', state.x, state.y - 40, { color: '#7ff5e6', size: 20, life: 1 });
+    sfx.play('shieldbreak');
+    vibrate([20, 30, 20]);
+  },
+  onBossStrike(x, y) {
+    sfx.play('roar', 0.1, 0.5);
+    vibrate(20);
+    floats.add('MOVE', x, y - 50, { color: '#ff4d4d', size: 24, life: 0.9 });
+  },
+  onSecret(id) {
+    const a = ACHIEVEMENTS.find((x) => x.id === id);
+    sfx.play('secret');
+    vibrate([40, 40, 40, 40, 80]);
+    showBanner('SECRET FOUND', a ? `${a.icon} ${a.name}` : id, 3000);
+    if (id === 'whale') fx.whale = 0.001;
+    if (a) unlock(meta, id);
+    meta.pearlBank += 10; saveMeta(meta);
+    floats.add('+10 pearls', state.x, state.y - 60, { color: '#fff6d0', size: 18, life: 1.4 });
   },
   onHatchOpen() {
     sfx.play('hatch');
@@ -161,12 +220,16 @@ const events: Events = {
     fx.fade = 1;
     if (tut === 'hatch') { tut = 'done'; meta.tutorialDone = true; saveMeta(meta); }
     if (level.boss) {
-      showBanner('THE ANGLER', 'Lure it into the mines.', 3600, true);
-      say("So that's what guards them.", 3200);
+      const title = { angler: 'THE ANGLER', kraken: 'THE KRAKEN', leviathan: 'THE LEVIATHAN' }[level.boss];
+      const sub = { angler: 'Lure it into the mines.', kraken: 'It strikes where you ping. Ping near mines, then move.', leviathan: 'It follows you. Swim past the mines.' }[level.boss];
+      showBanner(title, sub, 4000, true);
+      say({ angler: "So that's what guards them.", kraken: 'Eight arms. One eye. Ping smart.', leviathan: "It doesn't stop. So don't stop either." }[level.boss], 3600);
       sfx.play('roar', 0.05, 1.2);
       vibrate([40, 60, 80]);
-      tryUnlock('angler');
-      bossHud.hidden = false; bossHp.textContent = '●●●';
+      if (level.boss === 'angler') tryUnlock('angler');
+      bossHud.hidden = false;
+      $('bossName').textContent = title.replace('THE ', '');
+      bossHp.textContent = '●'.repeat(level.bossHp);
     } else {
       showBanner(`${level.depth} m · ${level.name}`, level.intro);
       bossHud.hidden = true;
@@ -175,6 +238,11 @@ const events: Events = {
     if (index === 1) tryUnlock('kelp');
     if (index === 2) tryUnlock('wreck');
     if (index === 3) tryUnlock('trench');
+    if (level.depth >= 300) tryUnlock('depth300');
+    for (const ms of claimMilestones(meta, level.depth)) {
+      setTimeout(() => { showBanner(`MILESTONE ${ms.depth} m`, `+${ms.reward} pearls · new paint`, 2600); sfx.play('milestone'); }, 2800);
+    }
+    fx.paint = paintFor(meta);
     if (level.depth > meta.bestDepth) meta.bestDepth = level.depth;
     if (index > (meta.checkpoint ?? 0)) meta.checkpoint = index;
     saveMeta(meta);
@@ -186,16 +254,18 @@ const events: Events = {
     sfx.play('bosshit');
     vibrate([30, 40, 30]);
     floats.add('HIT!', x, y - 40, { color: '#ff9a5c', size: 30, life: 1 });
-    bossHp.textContent = '●'.repeat(hpLeft) + '○'.repeat(RULES.boss.hp - hpLeft);
+    bossHp.textContent = '●'.repeat(hpLeft) + '○'.repeat(Math.max(0, (state.boss?.maxHp ?? hpLeft) - hpLeft));
   },
   onBossDown(x, y) {
     particles.emit({ x, y, count: 90, speed: 260, life: 1, color: '#fff2c4', size: 4 });
     shake.add(1); fx.bossFlash = 1; freeze = 0.14;
     sfx.play('bossdown');
     vibrate([60, 40, 60, 40, 120]);
-    floats.add('ANGLER DOWN', x, y - 50, { color: '#fff6d0', size: 30, life: 1.6 });
+    const kind = state.level.boss ?? 'angler';
+    floats.add({ angler: 'ANGLER DOWN', kraken: 'KRAKEN DOWN', leviathan: 'LEVIATHAN DOWN' }[kind], x, y - 50, { color: '#fff6d0', size: 30, life: 1.6 });
     bossHud.hidden = true;
-    tryUnlock('slayer');
+    tryUnlock({ angler: 'slayer', kraken: 'kraken', leviathan: 'leviathan' }[kind]);
+    say(state.bossTorpedoUsed ? 'Down. Torpedoes help.' : 'Down. Not one torpedo.', 2600);
   },
   onLifeLost(by, livesLeft) {
     freeze = 0.1;
@@ -203,7 +273,7 @@ const events: Events = {
     sfx.play(by === 'mine' ? 'boom' : by === 'boss' ? 'roar' : by === 'jelly' || by === 'fish' ? 'sting' : 'drown');
     vibrate(by === 'mine' || by === 'boss' ? [60, 40, 90] : 60);
     particles.emit({ x: state.x, y: state.y, count: 40, speed: 180, life: 0.6, color: by === 'mine' || by === 'boss' ? '#ff9a5c' : '#7ff5e6', size: 4 });
-    const cause = { mine: 'Mine.', boss: 'The Angler.', jelly: 'Jellyfish.', fish: 'Echo fish.', oxygen: 'No air.', pearl: '', tank: '' }[by];
+    const cause = causeShort(by);
     showBanner(`${livesEl.textContent ? '' : ''}${livesLeft} LIVES LEFT`, cause, 1800);
     if (livesLeft === 3) say('Three left. Careful now.', 2200);
     else if (livesLeft === 1) say('Last one. Make it count.', 2200);
@@ -225,7 +295,7 @@ const events: Events = {
     if (sc > meta.bestScore) meta.bestScore = sc;
     logDive(meta, { depth: state.level.depth, pearls: state.pearlsDive, level: state.level.name, score: sc, date: new Date().toISOString().slice(0, 10) });
     saveMeta(meta);
-    const cause = { mine: 'You hit a mine.', boss: 'The Angler got you.', jelly: 'Stung by a jellyfish.', fish: 'The echo fish found you.', oxygen: 'Out of oxygen.', pearl: '', tank: '' }[by];
+    const cause = causeLong(by);
     $('finalDepth').textContent = `${state.level.depth} m`;
     $('cause').textContent = `${cause} No lives left.`;
     $('diveLog').textContent = `${state.level.name} · ${state.pearlsDive} pearls · ${Math.floor(state.t)} s · score ${sc}`;
@@ -247,6 +317,7 @@ function startGame(fromTop = false): void {
   overEl.hidden = true;
   startLevel(state, startAt, rng, events);
   fx.shownDepth = state.level.depth;
+  fx.paint = paintFor(meta);
   tut = tutorial ? 'tap' : 'done';
   if (tutorial) setTimeout(() => { if (tut === 'tap') say('Dark. Finally. Ping to see.'); }, 1600);
 }
@@ -272,7 +343,12 @@ function renderShop(): void {
     row.appendChild(btn);
     shop.appendChild(row);
   }
-  achEl.innerHTML = ACHIEVEMENTS.map((a) => `<span class="ach ${meta.achievements.includes(a.id) ? 'on' : ''}" title="${a.name}: ${a.desc}">${a.icon}</span>`).join('');
+  achEl.innerHTML = ACHIEVEMENTS.map((a) => {
+    const on = meta.achievements.includes(a.id);
+    const hidden = a.secret && !on;
+    return `<span class="ach ${on ? 'on' : ''} ${hidden ? 'secret' : ''}" title="${hidden ? 'Secret mission' : `${a.name}: ${a.desc}`}">${hidden ? '?' : a.icon}</span>`;
+  }).join('');
+  milestonesEl.innerHTML = MILESTONES.map((ms) => `<span class="ms ${meta.milestones.includes(ms.depth) ? 'on' : ''}"><b>${ms.depth} m</b><small>+${ms.reward}</small></span>`).join('');
   logEl.innerHTML = meta.divelog.length
     ? meta.divelog.map((d, i) => `<div class="log"><span>#${i + 1}</span><b>${d.depth} m</b><span>${d.level}</span><span>${d.pearls} pearls</span><span>${d.score}</span></div>`).join('')
     : '';
@@ -287,6 +363,7 @@ bindPointer(view, {
     const big = pointerUp(state, events);
     if (wasHolding) {
       sfx.play(big ? 'bigping' : 'ping', 0.02);
+      if (big && state.torpedoes.length) { sfx.play('fire'); vibrate(20); }
       if (tut === 'tap') tut = 'pearl';
       else if (tut === 'hold' && big) { tut = state.hatchOpen ? 'hatch' : 'pearl'; say('Bigger ping. Twice the air.'); }
     }
@@ -318,6 +395,7 @@ startLoop({
     fx.t += dt;
     fx.fade = Math.max(0, fx.fade - dt * 1.4);
     fx.bossFlash = Math.max(0, fx.bossFlash - dt * 3);
+    if (fx.whale > 0) { fx.whale += dt / 7; if (fx.whale >= 1) fx.whale = 0; }
     if (freeze > 0) { freeze -= dt; return; }
     if (playing) {
       update(state, dt, rng, events);
@@ -356,6 +434,13 @@ startLoop({
     depthEl.textContent = `${Math.round(fx.shownDepth)} m`;
     pearlsEl.textContent = `${state.pearls}/${state.level.pearlsNeeded} pearls`;
     livesEl.textContent = `♥ ${state.lives}`;
+    ammoEl.textContent = state.ammo > 0 ? `➤ ${state.ammo}` : '';
+    const st: string[] = [];
+    if (state.shield) st.push('SHIELD');
+    if (state.flare > 0) st.push(`FLARE ${Math.ceil(state.flare)}`);
+    if (state.magnet > 0) st.push(`MAGNET ${Math.ceil(state.magnet)}`);
+    if (state.boost > 0) st.push(`BOOST ${Math.ceil(state.boost)}`);
+    statusEl.textContent = st.join(' · ');
     livesEl.classList.toggle('low', state.lives <= 3);
   },
 });

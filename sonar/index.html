@@ -44,6 +44,12 @@
     .achs { display: flex; justify-content: center; gap: 6px; margin: 10px 0 4px; }
     .ach { font-size: 20px; filter: grayscale(1); opacity: 0.25; }
     .ach.on { filter: none; opacity: 1; }
+    .ach.secret { opacity: 0.5; filter: none; color: var(--gold); font-weight: 800; font-size: 16px; width: 22px; height: 22px; display: inline-grid; place-items: center; border: 1px dashed rgba(255,246,208,0.5); border-radius: 50%; }
+    .achs { flex-wrap: wrap; }
+    .mss { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+    .ms { font-size: 11px; padding: 4px 8px; border-radius: 999px; border: 1px solid rgba(127,245,230,0.2); opacity: 0.45; }
+    .ms.on { opacity: 1; border-color: var(--gold); color: var(--gold); }
+    .ms b { margin-right: 4px; }
     .logbox { margin: 8px 0 0; }
     .log { display: grid; grid-template-columns: 26px 52px 1fr 60px 44px; gap: 6px; font-size: 12px; opacity: 0.85; padding: 3px 0; border-top: 1px solid rgba(127,245,230,0.08); }
     .log b { color: var(--teal); }
@@ -67,6 +73,8 @@
     .hud2 { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 26px); left: 14px; right: 14px; display: flex; justify-content: space-between; pointer-events: none; z-index: 5; font-size: 13px; font-weight: 700; opacity: 0.85; }
     .hud2 .boss { color: var(--orange); letter-spacing: 3px; }
     .hud2 .lives { color: #ff8a8a; }
+    .hud2 .ammo { color: var(--orange); }
+    .hud3 { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 48px); left: 14px; right: 14px; text-align: center; pointer-events: none; z-index: 5; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: var(--teal); opacity: 0.9; }
     .hud2 .lives.low { color: #ff4d4d; animation: blink 0.8s infinite alternate; }
     @keyframes blink { from { opacity: 1; } to { opacity: 0.4; } }
     #soundBtn { position: fixed; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 6; margin: 0; padding: 8px 10px; font-size: 16px; border-color: rgba(127,245,230,0.25); box-shadow: none; }
@@ -88,7 +96,8 @@
 <body>
   <canvas id="c"></canvas>
   <div class="hud"><span class="lbl">O₂</span><div class="bar"><div id="o2"></div></div><span class="pill" id="depth">20 m</span></div>
-  <div class="hud2"><span id="pearls">0/3 pearls</span><span class="lives" id="lives">♥ 10</span><span id="bossHud" hidden>ANGLER <span class="boss" id="bossHp">●●●</span></span></div>
+  <div class="hud2"><span id="pearls">0/3 pearls</span><span class="lives" id="lives">♥ 10</span><span id="ammo" class="ammo"></span><span id="bossHud" hidden><span id="bossName">ANGLER</span> <span class="boss" id="bossHp">●●●</span></span></div>
+  <div class="hud3" id="status"></div>
   <div class="banner" id="banner"><b id="bannerTitle"></b><span id="bannerSub"></span></div>
   <div class="award" id="award"></div>
   <div class="say" id="say"><canvas id="jackFace" width="108" height="108"></canvas><span id="sayText"></span></div>
@@ -111,13 +120,15 @@
       <h1>SONAR</h1>
       <p class="tag">Jack vs the deep</p>
       <p class="sub" id="bestDepth">No dives yet</p>
-      <p>Bring up the pearls.<br>Seeing costs air. Ten lives.</p>
+      <p>Bring up the pearls.<br>Seeing costs air. Ten lives. Three bosses.</p>
       <button id="startBtn" class="primary">DIVE</button>
       <div><button id="topBtn" class="secondary" hidden>From the top</button><button id="panelBtn" class="secondary">Upgrades</button><button id="storyBtn" class="secondary">Story</button></div>
       <div class="panel" id="panel" hidden>
         <h2>UPGRADES <span><span id="bank">0</span> pearls</span></h2>
         <div id="shop"></div>
         <div class="achs" id="achievements"></div>
+        <h2 style="margin-top:10px">MILESTONES</h2>
+        <div class="mss" id="milestones"></div>
         <div class="logbox" id="divelog"></div>
       </div>
     </div>

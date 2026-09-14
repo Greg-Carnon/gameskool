@@ -1,13 +1,15 @@
 import { H, W } from '../kit/canvas';
 import { mulberry32 } from '../kit/rng';
 import { LEVELS, type Env } from './levels';
-import { RULES, type State } from './logic';
+import { krakenArmPoints, RULES, type State } from './logic';
 
 export interface SceneFx {
   t: number;
   fade: number;        // 0..1 schwarz
   bossFlash: number;
   shownDepth: number;  // rollende Tiefenzahl
+  paint: string;       // Bootsfarbe aus Meilensteinen
+  whale: number;       // 0 = kein Wal, sonst Fortschritt 0..1
 }
 
 const TEAL = '#7ff5e6';
@@ -117,6 +119,32 @@ function drawEnvironment(ctx: CanvasRenderingContext2D, env: Env, index: number,
       ctx.fillStyle = `rgba(90,160,255,${a})`;
       ctx.beginPath(); ctx.arc(d.x, d.y, 1.6, 0, Math.PI * 2); ctx.fill();
     }
+  } else if (env === 'kraken') {
+    drawSeabed(ctx, e, '#0d0a1a');
+    for (const d of e.dots) {
+      const a = 0.2 + 0.3 * Math.max(0, Math.sin(t * 1.1 + d.ph));
+      ctx.fillStyle = `rgba(170,110,255,${a})`;
+      ctx.beginPath(); ctx.arc(d.x, d.y, 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+    if (s.boss && s.boss.mode === 'strike') {
+      ctx.fillStyle = `rgba(170,110,255,${0.05 + 0.05 * Math.sin(t * 9)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  } else if (env === 'deep') {
+    drawSeabed(ctx, e, '#050a10');
+    // Schwarze Raucher
+    for (let i = 0; i < 3; i++) {
+      const x = 70 + i * 125;
+      ctx.fillStyle = '#0a1016';
+      ctx.beginPath(); ctx.moveTo(x - 22, H - 60); ctx.lineTo(x - 8, H - 150 - i * 20); ctx.lineTo(x + 8, H - 150 - i * 20); ctx.lineTo(x + 22, H - 60); ctx.closePath(); ctx.fill();
+      for (let k = 0; k < 6; k++) {
+        const kk = ((t * 0.25 + k * 0.17 + i * 0.3) % 1);
+        ctx.fillStyle = `rgba(90,90,110,${0.25 * (1 - kk)})`;
+        ctx.beginPath(); ctx.arc(x + Math.sin(kk * 6 + k) * 14, H - 150 - i * 20 - kk * 260, 8 + kk * 22, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = `rgba(255,120,60,${0.5 + 0.4 * Math.sin(t * 7 + i)})`;
+      ctx.beginPath(); ctx.arc(x, H - 152 - i * 20, 4, 0, Math.PI * 2); ctx.fill();
+    }
   } else if (env === 'lair') {
     drawSeabed(ctx, e, '#120a10');
     // Rippen und Schädel
@@ -170,7 +198,7 @@ function drawGauge(ctx: CanvasRenderingContext2D, s: State, t: number): void {
   ctx.beginPath(); ctx.arc(x, cy, 7 + Math.sin(t * 3) * 1.5, 0, Math.PI * 2); ctx.stroke();
 }
 
-function drawSub(ctx: CanvasRenderingContext2D, x: number, y: number, ang: number, t: number, facing: number): void {
+function drawSub(ctx: CanvasRenderingContext2D, x: number, y: number, ang: number, t: number, facing: number, paint = '#ffd23f'): void {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(facing, 1);
@@ -182,11 +210,11 @@ function drawSub(ctx: CanvasRenderingContext2D, x: number, y: number, ang: numbe
   cone.addColorStop(1, 'rgba(255,246,208,0)');
   ctx.fillStyle = cone;
   ctx.beginPath(); ctx.moveTo(18, -4); ctx.lineTo(20 + RULES.headlight * 1.6, -30); ctx.lineTo(20 + RULES.headlight * 1.6, 30); ctx.lineTo(18, 4); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#ffd23f';
+  ctx.fillStyle = paint;
   ctx.beginPath(); ctx.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#e0b12e';
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
   ctx.beginPath(); ctx.ellipse(0, 4, 20, 7, 0, 0, Math.PI); ctx.fill();
-  ctx.fillStyle = '#ffd23f';
+  ctx.fillStyle = paint;
   ctx.fillRect(-6, -18, 12, 9);
   ctx.fillRect(-1, -24, 2, 7);
   // Bullauge mit Jack: Cap, blonde Haare, Schnurrbart
@@ -216,8 +244,69 @@ function drawSub(ctx: CanvasRenderingContext2D, x: number, y: number, ang: numbe
   ctx.restore();
 }
 
+function drawKraken(ctx: CanvasRenderingContext2D, s: State, t: number): void {
+  const b = s.boss!;
+  const a = Math.max(0.16, b.vis, b.mode === 'stunned' ? 0.6 + 0.4 * Math.sin(t * 20) : 0);
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = '#2a1f4a';
+  ctx.lineCap = 'round';
+  for (const arm of krakenArmPoints(b, t)) {
+    ctx.lineWidth = 16;
+    ctx.beginPath(); ctx.moveTo(arm.x1, arm.y1);
+    const mx = (arm.x1 + arm.x2) / 2 + Math.sin(t * 2 + arm.x2) * 18, my = (arm.y1 + arm.y2) / 2 + Math.cos(t * 2 + arm.y2) * 18;
+    ctx.quadraticCurveTo(mx, my, arm.x2, arm.y2); ctx.stroke();
+    ctx.fillStyle = 'rgba(170,110,255,0.5)';
+    for (let k = 0.3; k < 1; k += 0.2) {
+      ctx.beginPath(); ctx.arc(arm.x1 + (arm.x2 - arm.x1) * k, arm.y1 + (arm.y2 - arm.y1) * k, 3, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.fillStyle = '#2a1f4a';
+  ctx.beginPath(); ctx.ellipse(b.x, b.y - 10, 44, 56, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c9f5ff';
+  ctx.beginPath(); ctx.ellipse(b.x, b.y, 18, 22, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = b.mode === 'strike' ? '#ff4d4d' : '#0a1116';
+  ctx.beginPath(); ctx.ellipse(b.x, b.y, 7, 14, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  if (b.mode === 'strike') {
+    const k = 1 - b.modeT / RULES.kraken.telegraph;
+    ctx.strokeStyle = `rgba(255,77,77,${0.4 + 0.5 * k})`;
+    ctx.lineWidth = 3;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath(); ctx.arc(b.strikeX, b.strikeY, RULES.kraken.strikeRadius * (1.4 - 0.4 * k), 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function drawLeviathan(ctx: CanvasRenderingContext2D, s: State, t: number): void {
+  const b = s.boss!;
+  const a = Math.max(0.12, b.vis, b.mode === 'stunned' ? 0.6 + 0.4 * Math.sin(t * 20) : 0);
+  ctx.save();
+  ctx.globalAlpha = a;
+  for (let i = b.trail.length - 1; i >= 0; i -= 4) {
+    const p = b.trail[i];
+    const k = 1 - i / b.trail.length;
+    ctx.fillStyle = i % 8 === 0 ? '#12303a' : '#0e2630';
+    ctx.beginPath(); ctx.ellipse(p.x, p.y, 8 + 10 * k, 7 + 8 * k, 0, 0, Math.PI * 2); ctx.fill();
+    if (i % 8 === 0) { ctx.fillStyle = 'rgba(127,245,230,0.5)'; ctx.beginPath(); ctx.arc(p.x, p.y - 6, 2, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.translate(b.x, b.y);
+  ctx.rotate(b.angle);
+  ctx.fillStyle = '#12303a';
+  ctx.beginPath(); ctx.ellipse(0, 0, 30, 18, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#0a1116';
+  ctx.beginPath(); ctx.moveTo(6, 4); ctx.lineTo(32, 2); ctx.lineTo(28, 14); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#e8f0f2';
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(8 + i * 5, 4); ctx.lineTo(10 + i * 5, 10); ctx.lineTo(12 + i * 5, 4); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = '#ff4d4d';
+  ctx.beginPath(); ctx.arc(10, -6, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
 function drawBoss(ctx: CanvasRenderingContext2D, s: State, t: number): void {
   const b = s.boss!;
+  if (b.kind === 'kraken') { drawKraken(ctx, s, t); return; }
+  if (b.kind === 'leviathan') { drawLeviathan(ctx, s, t); return; }
   const facing = Math.cos(b.angle) < 0 ? -1 : 1;
   const lx = b.x + facing * 44, ly = b.y - 26 + Math.sin(t * 3) * 3;
   ctx.drawImage(glow(), lx - 20, ly - 20, 40, 40);
@@ -342,7 +431,30 @@ export function render(ctx: CanvasRenderingContext2D, s: State, fx: SceneFx, pla
     }
     ctx.save();
     ctx.globalAlpha = a;
-    if (o.kind === 'pearl') {
+    if (o.kind === 'gold') {
+      ctx.drawImage(glow(), o.x - 40, o.y - 40, 80, 80);
+      ctx.fillStyle = '#f2c94c';
+      ctx.beginPath(); ctx.arc(o.x, o.y, 11, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff6d0';
+      ctx.beginPath(); ctx.arc(o.x - 3, o.y - 3, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f2c94c';
+      ctx.font = '800 9px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText("CAPTAIN'S PEARL", o.x, o.y - 22);
+    } else if (o.kind === 'torpedo' || o.kind === 'flare' || o.kind === 'magnet' || o.kind === 'shield' || o.kind === 'boost') {
+      const col = { torpedo: '#ff9a5c', flare: '#fff6d0', magnet: '#c58bff', shield: '#7ff5e6', boost: '#5cf2a0' }[o.kind];
+      const bob = Math.sin(t * 3 + o.phase) * 3;
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(o.x - 14, o.y - 14 + bob, 28, 28, 8); ctx.stroke();
+      ctx.fillStyle = col;
+      ctx.globalAlpha *= 0.15; ctx.fill(); ctx.globalAlpha = a;
+      ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = 'round';
+      const cx = o.x, cy = o.y + bob;
+      if (o.kind === 'torpedo') { ctx.beginPath(); ctx.roundRect(cx - 9, cy - 3, 18, 6, 3); ctx.fill(); ctx.beginPath(); ctx.moveTo(cx - 9, cy - 6); ctx.lineTo(cx - 9, cy + 6); ctx.stroke(); }
+      else if (o.kind === 'flare') { for (let i = 0; i < 8; i++) { const an = i / 8 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(cx + Math.cos(an) * 3, cy + Math.sin(an) * 3); ctx.lineTo(cx + Math.cos(an) * 9, cy + Math.sin(an) * 9); ctx.stroke(); } }
+      else if (o.kind === 'magnet') { ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(cx, cy + 1, 7, Math.PI, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx - 7, cy + 1); ctx.lineTo(cx - 7, cy + 7); ctx.moveTo(cx + 7, cy + 1); ctx.lineTo(cx + 7, cy + 7); ctx.stroke(); }
+      else if (o.kind === 'shield') { ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(cx, cy - 9); ctx.lineTo(cx + 8, cy - 5); ctx.lineTo(cx + 6, cy + 5); ctx.lineTo(cx, cy + 9); ctx.lineTo(cx - 6, cy + 5); ctx.lineTo(cx - 8, cy - 5); ctx.closePath(); ctx.stroke(); }
+      else { ctx.beginPath(); ctx.moveTo(cx + 2, cy - 10); ctx.lineTo(cx - 6, cy + 1); ctx.lineTo(cx, cy + 1); ctx.lineTo(cx - 2, cy + 10); ctx.lineTo(cx + 6, cy - 1); ctx.lineTo(cx, cy - 1); ctx.closePath(); ctx.fill(); }
+    } else if (o.kind === 'pearl') {
       ctx.drawImage(glow(), o.x - 26, o.y - 26, 52, 52);
       ctx.fillStyle = '#fff7e0';
       ctx.beginPath(); ctx.arc(o.x, o.y, 7, 0, Math.PI * 2); ctx.fill();
@@ -386,7 +498,29 @@ export function render(ctx: CanvasRenderingContext2D, s: State, fx: SceneFx, pla
     }
     ctx.restore();
   }
+  for (const tp of s.torpedoes) {
+    ctx.save();
+    ctx.translate(tp.x, tp.y);
+    ctx.rotate(Math.atan2(tp.vy, tp.vx));
+    ctx.fillStyle = '#ff9a5c';
+    ctx.beginPath(); ctx.roundRect(-10, -3, 20, 6, 3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,154,92,0.4)';
+    ctx.beginPath(); ctx.moveTo(-10, -2); ctx.lineTo(-24 - Math.random() * 6, 0); ctx.lineTo(-10, 2); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
   if (s.boss) drawBoss(ctx, s, t);
+  if (fx.whale > 0) {
+    const k = fx.whale;
+    const wx = -160 + (W + 320) * k;
+    const wy = 250 + Math.sin(k * 6) * 20;
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = '#0a2a30';
+    ctx.beginPath(); ctx.ellipse(wx, wy, 120, 34, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(wx - 110, wy); ctx.lineTo(wx - 160, wy - 30); ctx.lineTo(wx - 150, wy); ctx.lineTo(wx - 160, wy + 30); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(wx + 20, wy + 24, 40, 10, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
   if (playing && Math.hypot(s.tx - s.x, s.ty - s.y) > 4) {
     ctx.strokeStyle = 'rgba(127,245,230,0.5)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(s.tx, s.ty, 6 + Math.sin(t * 6) * 2, 0, Math.PI * 2); ctx.stroke();
@@ -402,12 +536,28 @@ export function render(ctx: CanvasRenderingContext2D, s: State, fx: SceneFx, pla
   const ang = moving ? Math.atan2(s.ty - s.y, Math.abs(s.tx - s.x)) * 0.25 : 0;
   if (s.alive || !playing) {
     if (s.invuln > 0) ctx.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(t * 18));
-    drawSub(ctx, s.x, s.y, ang, t, facing);
+    drawSub(ctx, s.x, s.y, ang, t, facing, fx.paint);
     ctx.globalAlpha = 1;
     if (s.invuln > 0) {
       ctx.strokeStyle = 'rgba(127,245,230,0.45)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(s.x, s.y, 34, 0, Math.PI * 2 * (s.invuln / RULES.respawnGrace)); ctx.stroke();
+      ctx.beginPath(); ctx.arc(s.x, s.y, 34, 0, Math.PI * 2 * Math.min(1, s.invuln / RULES.respawnGrace)); ctx.stroke();
     }
+    if (s.shield) {
+      ctx.strokeStyle = `rgba(127,245,230,${0.5 + 0.3 * Math.sin(t * 4)})`; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(s.x, s.y, 32, 24, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    if (s.boost > 0) {
+      ctx.strokeStyle = 'rgba(92,242,160,0.5)'; ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(s.x - facing * (30 + i * 9), s.y - 6 + i * 6); ctx.lineTo(s.x - facing * (48 + i * 12), s.y - 6 + i * 6); ctx.stroke(); }
+    }
+    if (s.magnet > 0) {
+      ctx.strokeStyle = 'rgba(197,139,255,0.25)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6]);
+      ctx.beginPath(); ctx.arc(s.x, s.y, RULES.magnetRadius, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+  if (s.flare > 0) {
+    ctx.fillStyle = `rgba(255,246,208,${0.06 + 0.06 * Math.min(1, s.flare)})`;
+    ctx.fillRect(0, 0, W, H);
   }
   if (s.chain >= 2 && s.chainT > 0) {
     ctx.fillStyle = TEAL;
