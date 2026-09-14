@@ -103,3 +103,12 @@ Danach alle drei Levels ein Boss im Zyklus, HP steigt pro Runde. Torpedos sind d
 **17 Achievements**, zwei neue Upgrades: Torpedo bay (Start-Munition), Reinforced hull (Schild zum Start, Stufe 2 jedes Level, Stufe 3 längere Unverwundbarkeit).
 
 66 Tests, darunter alle drei Boss-Mechaniken, jedes Pickup, Torpedo gegen Mine und Boss, alle vier Geheimnisse, Meilensteine.
+
+## Finale: Megalodon und Grotte, 14. September
+
+- **Level 11, The Megalodon, 480 m, 6 HP.** Kreist am Rand auf einer Ellipse. Alle 3,2 s dreht er sich zum Boot, ein roter gestrichelter Strich zeigt die Bahn (1,15 s), dann rast er mit 420 px/s geradeaus, bis er den Rand verlässt. Minen auf der Bahn explodieren und verletzen ihn, das Boot auf der Bahn verliert ein Leben. Rückenflosse und Kielwasser sind immer schwach sichtbar, Maul offen beim Angriff.
+- **Level 12, The Grotto, 520 m.** Keine Gegner, kein Luftverbrauch, keine Perlen nötig. Warme Höhle mit Felswänden, sechs saubere Website-Karten aus dem Jack-vs-Slop-Generator schweben mit Schein. Banner "THE GROTTO", Jack: "No slop. Not one prompt. Look at these." Nach 5,6 s der Finale-Screen mit Auflösung, Score und "Keep diving". Die Luke öffnet nach 6 s von selbst.
+- Danach Endlos-Zyklus ab 560 m, alle drei Levels ein Boss, jetzt im Vierer-Zyklus Angler, Kraken, Leviathan, Megalodon.
+- Zwei Achievements dazu: Megalodon slayer, The Grotto. 19 insgesamt.
+
+68 Tests, darunter Megalodon-Angriff mit Mine auf der Bahn und Grotte ohne Luftverbrauch.
