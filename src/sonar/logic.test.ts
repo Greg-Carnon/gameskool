@@ -275,6 +275,10 @@ describe('Bosse', () => {
     expect(s.oxygen).toBe(100);
     expect(s.objects.length).toBe(0);
     expect(opened).toBe(1);
+    const secrets: string[] = [];
+    park(s, RULES.hatch.x, RULES.hatch.y);
+    update(s, 1 / 60, rng, { ...noop, onSecret: (id) => secrets.push(id) });
+    expect(secrets).toEqual([]);
   });
   it('Luke öffnet im Bosslevel erst nach dem Sieg', () => {
     const s = fresh(4, 9);

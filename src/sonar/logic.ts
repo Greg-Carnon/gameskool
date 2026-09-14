@@ -550,8 +550,8 @@ export function update(s: State, dt: number, rng: () => number, ev: Events): voi
   if (s.hatchOpen && Math.hypot(s.x - RULES.hatch.x, s.y - RULES.hatch.y) < RULES.hatch.r) {
     s.transition = 1.3;
     s.holding = false;
-    if (s.pingsThisLevel === 0 && !s.secretsFound.includes('ghost')) { s.secretsFound.push('ghost'); ev.onSecret('ghost'); }
-    if (s.oxygen >= 99 && !s.secretsFound.includes('fulltank')) { s.secretsFound.push('fulltank'); ev.onSecret('fulltank'); }
+    if (s.level.env !== 'grotto' && s.pingsThisLevel === 0 && !s.secretsFound.includes('ghost')) { s.secretsFound.push('ghost'); ev.onSecret('ghost'); }
+    if (s.level.env !== 'grotto' && s.oxygen >= 99 && !s.secretsFound.includes('fulltank')) { s.secretsFound.push('fulltank'); ev.onSecret('fulltank'); }
   }
 }
 

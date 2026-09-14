@@ -215,7 +215,7 @@ const events: Events = {
     sfx.play('hatch');
     floats.add('HATCH OPEN', RULES.hatch.x, RULES.hatch.y - 60, { color: '#7ff5e6', size: 22, life: 1.4 });
     if (tut !== 'done') { tut = 'hatch'; say("Deeper. The slop can't follow."); }
-    if (state.pingsThisLevel <= 2) tryUnlock('quiet');
+    if (state.pingsThisLevel <= 2 && state.level.env !== 'grotto') tryUnlock('quiet');
   },
   onDescend(level, index) {
     fx.fade = 1;
