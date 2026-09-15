@@ -34,6 +34,7 @@ describe('Levels', () => {
     expect(levelAt(LEVELS.length + 11).boss).toBe('megalodon');
     expect(LEVELS[11].boss).toBe('megalodon');
     expect(LEVELS[12].env).toBe('grotto');
+    for (const l of [LEVELS[4], LEVELS[7], LEVELS[10], LEVELS[11], levelAt(LEVELS.length + 2), levelAt(LEVELS.length + 11)]) expect(l.counts.fish).toBe(0);
     expect(levelAt(LEVELS.length + 4).depth).toBeGreaterThan(levelAt(LEVELS.length).depth);
   });
 });
