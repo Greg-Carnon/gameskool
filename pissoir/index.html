@@ -61,6 +61,34 @@
     .board input { font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 8px; border: 1px solid #c9d6da; width: 120px; }
     .board button { margin: 0 0 0 6px; font-size: 14px; padding: 8px 14px; }
     .tokens { font-size: 13px; color: #1f7a5a; font-weight: 700; }
+    .mirrorbox { position: fixed; left: 12px; right: 12px; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; gap: 10px; z-index: 9; }
+    .mirrorbox[hidden] { display: none; }
+    .mirrorbox button { flex: 1; margin: 0; font-size: 17px; padding: 16px 10px; background: #fff; color: var(--ink); box-shadow: 0 6px 0 #c9d6da; }
+    .powers .pw { width: 54px; height: 54px; display: grid; place-items: center; line-height: 1; }
+    .powers .pw small { font-size: 8px; font-weight: 800; letter-spacing: 0.02em; }
+    .shop { display: grid !important; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; }
+    .shop .ic { font-size: 22px; }
+    .shop .price { font-weight: 800; color: #1f7a5a; white-space: nowrap; }
+    .shop:disabled { opacity: 0.45; }
+    .lvboss { display: inline-block; background: var(--red); color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 0.2em; padding: 3px 8px; border-radius: 6px; margin-bottom: 6px; }
+    .lvboss[hidden] { display: none; }
+    .panel { text-align: left; background: #eef4f6; border-radius: 14px; padding: 10px 12px; margin-top: 10px; }
+    .panel[hidden] { display: none; }
+    .panel h3 { font-size: 11px; letter-spacing: 0.2em; margin: 0 0 6px; opacity: 0.7; }
+    .panel .hint { font-size: 12px; opacity: 0.7; margin: 0 0 8px; }
+    .ms { display: grid; grid-template-columns: 78px 1fr auto; gap: 8px; align-items: center; width: 100%; text-align: left; margin: 4px 0 0; padding: 8px 10px; font-size: 12px; background: #fff; color: var(--ink); box-shadow: none; border: 1px solid #c9d6da; border-radius: 10px; }
+    .ms b { font-size: 13px; }
+    .ms em { font-style: normal; font-size: 11px; opacity: 0.6; }
+    .ms:disabled { opacity: 0.5; }
+    .ms.on { border-color: var(--green); }
+    .ms.worn { background: #e6fbf0; }
+    .ms.worn em { color: #1f7a5a; opacity: 1; font-weight: 800; }
+    .achrow { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: center; padding: 5px 0; border-top: 1px solid #dfe9ec; font-size: 13px; opacity: 0.45; }
+    .achrow.on { opacity: 1; }
+    .achrow small { display: block; opacity: 0.7; }
+    .achrow span:first-child { font-size: 20px; }
+    .rowbtns { display: flex; gap: 8px; }
+    .rowbtns button { flex: 1; margin-top: 8px; font-size: 14px; padding: 10px; }
     .lvbox .card { text-align: left; }
     .lvbox h2 { font-family: 'Archivo Black', Inter, sans-serif; font-size: 28px; margin: 0; text-transform: uppercase; }
     .lvbox .lvl { font-size: 12px; letter-spacing: 0.2em; opacity: 0.6; font-weight: 800; }
@@ -75,6 +103,7 @@
   <button id="waitBtn" hidden>🚪 Wait</button>
   <button id="stallBtn" hidden>🚽 Stall</button>
   <div class="achtoast" id="achToast"></div>
+  <div class="mirrorbox" id="mirrorBox" hidden><button id="mirrorWall">🧱 Stare at the wall</button><button id="mirrorLook">👀 Look back</button></div>
 
   <div id="start" class="overlay">
     <div class="card">
@@ -83,15 +112,18 @@
       <p>Everyone knows the code. Keep your distance. Never next to a guy.</p>
       <p><b>Tap the right urinal</b> before your bladder gives up. Three awkward moments and you are done.</p>
       <p class="sub" id="bestLine"></p>
-      <p class="tokens" id="tokens"></p>
       <div class="achs" id="achs"></div>
       <button id="startBtn">GO</button>
+      <div class="rowbtns"><button id="msBtn" class="secondary" style="text-align:center">🏅 Milestones</button><button id="achBtn" class="secondary" style="text-align:center">🏆 Achievements</button></div>
+      <div class="panel" id="msPanel" hidden><h3>MILESTONES</h3><p class="hint" id="msHint"></p><div id="msList"></div></div>
+      <div class="panel" id="achPanel" hidden><h3>ACHIEVEMENTS</h3><div id="achList"></div></div>
       <div><button id="dailyBtn" class="secondary" style="text-align:center">📅 <b style="display:inline">Daily run</b> <small id="dailyLine"></small></button></div>
     </div>
   </div>
   <div id="levelup" class="overlay lvbox" hidden>
     <div class="card">
       <div class="lvl" id="lvPlace">NEXT UP</div>
+      <div class="lvboss" id="lvBoss" hidden>BOSS LEVEL</div>
       <h2 id="lvName"></h2>
       <p class="story" id="lvStory"></p>
       <p id="lvIntro"></p>

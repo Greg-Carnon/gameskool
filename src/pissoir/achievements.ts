@@ -14,6 +14,8 @@ export const ACHIEVEMENTS: Ach[] = [
   { id: 'rush', name: 'Rush hour survivor', desc: 'Finish Rush Hour', icon: '🏟️' },
   { id: 'day', name: 'A whole day', desc: 'Survive all eight places', icon: '🌙' },
   { id: 'daily', name: 'Daily diver', desc: 'Play the daily run', icon: '📅' },
+  { id: 'giant', name: 'Giant slayer', desc: 'Survive The Giant', icon: '🦣' },
+  { id: 'wanderer', name: 'Patience', desc: 'Survive The Wanderer', icon: '🚶‍♂️' },
 ];
 
 export interface PMeta {
@@ -21,7 +23,8 @@ export interface PMeta {
   achievements: string[];
   counters: Record<string, number>;
   daily: Record<string, number>;   // Datum → beste Runden
-  tokens: number;                  // Handtrockner-Münzen für Extra-Perks
+  tokens: number;
+  wear?: number[];                 // getragene Meilenstein-Belohnungen
 }
 const KEY = 'pissoir-meta';
 export function loadMeta(): PMeta {

@@ -1,6 +1,7 @@
 import { H, W } from '../kit/canvas';
 import { easeOutBack, easeOutCubic } from '../kit/tween';
 import type { Person, Slot } from './rules';
+import { drawCharacter, type Cosmetics } from './characters';
 import type { Theme } from './themes';
 
 export const FLOOR_Y = 560;
@@ -24,7 +25,10 @@ export interface Scene {
   stallFree: boolean;
   showStall: boolean;
   late: { slot: number; x: number; t: number } | null;   // Nachzügler läuft ein
-  mirror: { t: number; slot: number; done: boolean } | null; // Spiegel-Moment
+  mirror: { t: number; slot: number; done: boolean; wantsNod: boolean; answered: 'wall' | 'look' | null } | null; // Spiegel-Moment
+  wanderer: { from: number; to: number; t: number; settled: boolean } | null;
+  cos: Cosmetics;
+  posters: { slot: number; text: string[]; color: string; rot: number }[];
   dryer: { t: number; hit: number | null } | null;      // Handtrockner-Bonus
   moveMode: boolean;
 }
@@ -144,6 +148,35 @@ function drawRoom(ctx: CanvasRenderingContext2D, th: Theme, t: number): void {
   ctx.beginPath(); ctx.moveTo(100, 154); ctx.lineTo(150, 154); ctx.lineTo(120, 208); ctx.lineTo(96, 208); ctx.closePath(); ctx.fill();
 }
 
+export const POSTERS: { text: string[]; color: string }[] = [
+  { text: ['DIVORCE?', 'CALL NOW', '0800-SPLIT'], color: '#f4e1a1' },
+  { text: ['NEW YEAR', 'NEW YOU', '(it is September)'], color: '#cfe8cf' },
+  { text: ['MISSING:', 'my dignity', 'last seen here'], color: '#ffffff' },
+  { text: ['AI SLOP INC.', 'Certainly!', 'Here is your ad'], color: '#e9d5ff' },
+  { text: ['DR. BLADDER', 'Urologist', 'walk-ins welcome'], color: '#cfe3f4' },
+  { text: ['QUIZ NIGHT', '2 for 1', 'shame'], color: '#f4d1a1' },
+  { text: ['HODL', 'your breath', 'crypto dry cleaner'], color: '#d8f2a1' },
+  { text: ['WANTED:', 'guy who talks', 'at urinals'], color: '#f4c1c1' },
+  { text: ['LEARN GERMAN', 'in 3 days', '"Pissoir"'], color: '#ffe8a1' },
+  { text: ['HAND DRYER', 'repair', 'since 1998'], color: '#e0e0e0' },
+];
+function drawPosters(ctx: CanvasRenderingContext2D, posters: Scene['posters'], n: number): void {
+  for (const po of posters) {
+    const x = slotX(n, po.slot);
+    ctx.save();
+    ctx.translate(x, 262);
+    ctx.rotate(po.rot);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'; rr(ctx, -20, -20, 40, 46, 2); ctx.fill();
+    ctx.fillStyle = po.color; rr(ctx, -21, -22, 40, 46, 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(-6, -25, 12, 5); // Klebestreifen
+    ctx.fillStyle = '#1a1a1a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '800 7px Inter, system-ui, sans-serif'; ctx.fillText(po.text[0], -1, -12, 36);
+    ctx.font = '600 6px Inter, system-ui, sans-serif'; ctx.fillText(po.text[1], -1, -2, 36);
+    ctx.font = '500 5px Inter, system-ui, sans-serif'; ctx.fillStyle = '#4a4a4a'; ctx.fillText(po.text[2], -1, 8, 36);
+    ctx.restore();
+  }
+}
+
 export const STALL = { x: W - 74, y: 236, w: 66, h: 324 };
 function drawStall(ctx: CanvasRenderingContext2D, th: Theme, free: boolean, t: number): void {
   const { x, y, w, h } = STALL;
@@ -196,154 +229,10 @@ function drawUrinal(ctx: CanvasRenderingContext2D, x: number, w: number, slot: S
   }
 }
 
-function shade(hex: string, k: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.max(0, Math.min(255, ((n >> 16) & 255) * k)), g = Math.max(0, Math.min(255, ((n >> 8) & 255) * k)), b = Math.max(0, Math.min(255, (n & 255) * k));
-  return `rgb(${r | 0},${g | 0},${b | 0})`;
-}
+export const PLAYER: Person = { trait: 'normal', shirt: '#3d7bd6', skin: '#f1c7a3', hair: '#5a3a22', hat: false, hairStyle: 'short', beard: false, glasses: false, build: 'normal', id: 0 };
 
-const PLAYER: Person = { trait: 'normal', shirt: '#3d7bd6', skin: '#f1c7a3', hair: '#5a3a22', hat: false };
-
-/**
- * view 'back': steht am Pissoir, Rücken zu uns. look ≠ 0 dreht den Kopf ins Profil (−1 links, 1 rechts).
- * view 'front': an der Tür, Gesicht zu uns.
- */
-export function drawPerson(ctx: CanvasRenderingContext2D, x: number, p: Person | null, t: number, opts: { player?: boolean; walk?: number; look?: number; shame?: number; wave?: boolean; view?: 'back' | 'front' } = {}): void {
-  const y = FLOOR_Y - 4;
-  const who = p ?? PLAYER;
-  const scale = who.trait === 'kid' ? 0.72 : 1;
-  const view = opts.view ?? 'back';
-  const walk = opts.walk ?? 0;
-  const look = opts.look ?? 0;
-  const shame = opts.shame ?? 0;
-  const bob = walk > 0 ? Math.abs(Math.sin(t * 14)) * 4 : Math.sin(t * 2) * 1;
-  const pants = who.trait === 'boss' ? '#2a2a3e' : who.trait === 'kid' ? '#4a6a9a' : '#3a4a6a';
-  ctx.save();
-  ctx.translate(x, y - bob);
-  ctx.scale(scale, scale);
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  ctx.beginPath(); ctx.ellipse(0, 4 + bob, 22, 6, 0, 0, Math.PI * 2); ctx.fill();
-  // Beine
-  ctx.strokeStyle = pants; ctx.lineWidth = 12; ctx.lineCap = 'round';
-  const swing = walk > 0 ? Math.sin(t * 14) * 10 : 0;
-  ctx.beginPath(); ctx.moveTo(-8, -50); ctx.lineTo(-9 - swing, 0); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(8, -50); ctx.lineTo(9 + swing, 0); ctx.stroke();
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath(); ctx.ellipse(-10 - swing, 2, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(10 + swing, 2, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
-  // Rumpf
-  ctx.fillStyle = who.shirt;
-  rr(ctx, -22, -118, 44, 72, 12); ctx.fill();
-  const sleeve = shade(who.shirt, 0.82);
-  if (view === 'back') {
-    // Rückenfalte
-    ctx.strokeStyle = shade(who.shirt, 0.7); ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(0, -112); ctx.lineTo(0, -60); ctx.stroke();
-    // Arme: Oberarme seitlich nach unten, Ellbogen nach vorn (verdeckt)
-    ctx.strokeStyle = sleeve; ctx.lineWidth = 12;
-    if (opts.wave) {
-      ctx.beginPath(); ctx.moveTo(-20, -108); ctx.lineTo(-24, -76); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(20, -108); ctx.lineTo(36, -150 + Math.sin(t * 10) * 6); ctx.stroke();
-      ctx.fillStyle = who.skin; ctx.beginPath(); ctx.arc(37, -156 + Math.sin(t * 10) * 6, 7, 0, Math.PI * 2); ctx.fill();
-    } else if (who.trait === 'phone') {
-      ctx.beginPath(); ctx.moveTo(-20, -108); ctx.lineTo(-24, -76); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(20, -108); ctx.lineTo(26, -136); ctx.stroke();
-      ctx.fillStyle = who.skin; ctx.beginPath(); ctx.arc(26, -140, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#222'; rr(ctx, 21, -152, 10, 18, 3); ctx.fill();
-    } else {
-      ctx.beginPath(); ctx.moveTo(-20, -108); ctx.lineTo(-26, -78); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(20, -108); ctx.lineTo(26, -78); ctx.stroke();
-      // Ellbogen als Hautpunkt sichtbar
-      ctx.fillStyle = who.skin;
-      ctx.beginPath(); ctx.arc(-27, -76, 5, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(27, -76, 5, 0, Math.PI * 2); ctx.fill();
-    }
-    if (who.trait === 'boss') { ctx.fillStyle = shade(who.shirt, 0.7); ctx.fillRect(-22, -118, 44, 6); }
-    if (who.trait === 'friend') { ctx.fillStyle = '#0a1a10'; ctx.font = '700 11px Caveat, cursive'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('BRO', 0, -84); }
-    if (opts.player) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-22, -70, 44, 3); }
-    if (who.trait === 'dog') {
-      // Leine und Hund neben ihm
-      ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(26, -76); ctx.quadraticCurveTo(40, -40, 44, -10); ctx.stroke();
-      ctx.fillStyle = '#c9a26b'; ctx.beginPath(); ctx.ellipse(50, -8, 16, 9, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(64, -14, 8, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#8a6a4a'; ctx.beginPath(); ctx.ellipse(66, -20, 4, 6, 0.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1a1a1a'; ctx.beginPath(); ctx.arc(67, -15, 1.5, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#c9a26b'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(36, -6 + Math.sin(t * 6) * 3); ctx.lineTo(28, -14 + Math.sin(t * 6) * 4); ctx.stroke();
-      for (const lx of [42, 56]) { ctx.beginPath(); ctx.moveTo(lx, -2); ctx.lineTo(lx, 2); ctx.stroke(); }
-    }
-    if (who.trait === 'singer') {
-      ctx.fillStyle = '#c026d3'; ctx.font = '800 14px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const k = (t * 0.6) % 1;
-      ctx.globalAlpha = 1 - k; ctx.fillText('♪', 26 + k * 10, -170 - k * 30); ctx.fillText('♫', -26 - k * 8, -180 - ((k + 0.5) % 1) * 30); ctx.globalAlpha = 1;
-    }
-  } else {
-    // Von vorn: Arme hängen, Hände sichtbar
-    ctx.strokeStyle = sleeve; ctx.lineWidth = 12;
-    const sw = walk > 0 ? Math.sin(t * 14) * 8 : 0;
-    ctx.beginPath(); ctx.moveTo(-20, -108); ctx.lineTo(-28 + sw, -64); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(20, -108); ctx.lineTo(28 - sw, -64); ctx.stroke();
-    ctx.fillStyle = who.skin;
-    ctx.beginPath(); ctx.arc(-29 + sw, -58, 7, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(29 - sw, -58, 7, 0, Math.PI * 2); ctx.fill();
-    if (who.trait === 'boss') { ctx.fillStyle = '#e63946'; ctx.fillRect(-3, -112, 6, 40); }
-    if (opts.player) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-22, -70, 44, 3); }
-  }
-  // Kopf
-  ctx.save();
-  ctx.translate(look * 5, 0);
-  ctx.fillStyle = who.skin;
-  ctx.beginPath(); ctx.arc(0, -140, 22, 0, Math.PI * 2); ctx.fill();
-  const showFace = view === 'front';
-  const profile = view === 'back' && look !== 0;
-  // Haare oder Hut
-  if (who.hat) {
-    ctx.fillStyle = who.trait === 'boss' ? '#1a1a2e' : '#5a6a8a';
-    rr(ctx, -24, -166, 48, 14, 3); ctx.fill();
-    rr(ctx, -16, -186, 32, 22, 4); ctx.fill();
-  } else if (view === 'back' && !profile) {
-    // Hinterkopf: Haare bedecken mehr
-    ctx.fillStyle = who.hair;
-    ctx.beginPath(); ctx.arc(0, -144, 23, Math.PI * 0.9, Math.PI * 2.1); ctx.fill();
-    ctx.fillRect(-23, -146, 46, 14);
-  } else {
-    ctx.fillStyle = who.hair;
-    ctx.beginPath(); ctx.arc(0, -146, 23, Math.PI, Math.PI * 2); ctx.fill();
-  }
-  // Ohren
-  ctx.fillStyle = shade(who.skin, 0.92);
-  if (!profile) { ctx.beginPath(); ctx.arc(-22, -140, 5, 0, Math.PI * 2); ctx.arc(22, -140, 5, 0, Math.PI * 2); ctx.fill(); }
-  else { ctx.beginPath(); ctx.arc(-look * 18, -140, 5, 0, Math.PI * 2); ctx.fill(); }
-  ctx.fillStyle = '#1a1a1a';
-  if (showFace) {
-    if (shame > 0) {
-      ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(-12, -144); ctx.lineTo(-4, -140); ctx.moveTo(12, -144); ctx.lineTo(4, -140); ctx.stroke();
-      ctx.fillStyle = `rgba(230,57,70,${0.5 * shame})`;
-      ctx.beginPath(); ctx.arc(-10, -132, 5, 0, Math.PI * 2); ctx.arc(10, -132, 5, 0, Math.PI * 2); ctx.fill();
-    } else {
-      ctx.beginPath(); ctx.arc(-7, -142, 2.5, 0, Math.PI * 2); ctx.arc(7, -142, 2.5, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.strokeStyle = '#8a4a3c'; ctx.lineWidth = 2; ctx.beginPath();
-    if (shame > 0) ctx.arc(0, -124, 5, Math.PI + 0.3, -0.3); else { ctx.moveTo(-4, -130); ctx.lineTo(4, -130); }
-    ctx.stroke();
-  } else if (profile) {
-    // Profil zum Spieler: ein Auge, Nase, Mund auf der zugewandten Seite
-    const sx = look * 12;
-    ctx.beginPath(); ctx.arc(sx, -142, 2.6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = who.skin;
-    ctx.beginPath(); ctx.moveTo(look * 20, -138); ctx.lineTo(look * 27, -132); ctx.lineTo(look * 19, -129); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#8a4a3c'; ctx.lineWidth = 2; ctx.beginPath();
-    if (who.trait === 'friend' || opts.wave) ctx.arc(look * 12, -128, 5, look > 0 ? -0.6 : Math.PI - 2.5, look > 0 ? 1.8 : Math.PI + 0.6);
-    else if (who.trait === 'talker') ctx.ellipse(look * 16, -126, 3, 2 + Math.abs(Math.sin(t * 9)) * 3, 0, 0, Math.PI * 2);
-    else { ctx.moveTo(look * 10, -126); ctx.lineTo(look * 20, -127); }
-    ctx.stroke();
-    // Augenbraue hochgezogen
-    ctx.strokeStyle = who.hair; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(look * 6, -151); ctx.lineTo(look * 17, -149); ctx.stroke();
-  }
-  ctx.restore();
-  ctx.restore();
+export function drawPerson(ctx: CanvasRenderingContext2D, x: number, p: Person | null, t: number, opts: { player?: boolean; walk?: number; look?: number; shame?: number; wave?: boolean; view?: 'back' | 'front'; nod?: number; cos?: Cosmetics } = {}): void {
+  drawCharacter(ctx, x, FLOOR_Y - 4, p ?? PLAYER, opts.view ?? 'back', t, { walk: opts.walk, look: opts.look, shame: opts.shame, wave: opts.wave, nod: opts.nod, idle: p ? p.id * 1.7 : 0 }, opts.cos ?? {}, !!opts.player);
 }
 
 function drawBubble(ctx: CanvasRenderingContext2D, x: number, y: number, text: string, k: number): void {
@@ -377,6 +266,7 @@ export function render(ctx: CanvasRenderingContext2D, sc: Scene): void {
   const w = slotW(n);
   drawRoom(ctx, sc.theme, sc.t);
   if (sc.showStall) drawStall(ctx, sc.theme, sc.stallFree, sc.t);
+  drawPosters(ctx, sc.posters, n);
   sc.slots.forEach((slot, i) => {
     let hl = sc.reactKind === 'good' && sc.reactSlot === i ? Math.max(0, 1 - sc.reactT / 1.2) : 0;
     if (sc.reactKind === 'bad' && sc.good.includes(i)) hl = 0.5 + 0.5 * Math.sin(sc.t * 8);
@@ -387,45 +277,68 @@ export function render(ctx: CanvasRenderingContext2D, sc: Scene): void {
       ctx.beginPath(); ctx.moveTo(slotX(n, i) - 6, URINAL_Y - 92); ctx.lineTo(slotX(n, i), URINAL_Y - 84); ctx.lineTo(slotX(n, i) + 6, URINAL_Y - 92); ctx.closePath(); ctx.fill();
     }
   });
+  const drawnIds = new Set<number>();
   sc.slots.forEach((slot, i) => {
     if (slot.kind !== 'taken') return;
     if (sc.late && sc.late.slot === i && sc.late.t < 1) return; // läuft noch ein, wird separat gezeichnet
-    const x = slotX(n, i);
+    if (sc.wanderer && !sc.wanderer.settled && i === sc.wanderer.to) return;
+    if (drawnIds.has(slot.who.id)) return;
+    drawnIds.add(slot.who.id);
+    let x = slotX(n, i);
+    if (slot.who.trait === 'giant') x = (slotX(n, i) + slotX(n, i + 1)) / 2;
     let look = 0;
     const d = sc.playerTarget === null ? 99 : Math.abs(sc.playerTarget - i);
     const reacting = sc.playerState === 'shame' || (sc.reactKind === 'good' && slot.who.trait === 'friend' && d === 1);
     if (reacting && d <= 2 && sc.playerTarget !== null) look = sc.playerTarget < i ? -1 : 1;
+    if (sc.mirror && !sc.mirror.done && sc.mirror.slot === i && sc.playerTarget !== null) look = sc.playerTarget < i ? -1 : 1;
     const wave = slot.who.trait === 'friend' && sc.reactKind === 'good' && d === 1;
-    drawPerson(ctx, x, slot.who, sc.t + i * 1.7, { look, wave, view: 'back' });
+    drawPerson(ctx, x, slot.who, sc.t, { look, wave, view: 'back' });
   });
+  if (sc.wanderer && !sc.wanderer.settled) {
+    const slot = sc.slots[sc.wanderer.to];
+    if (slot.kind === 'taken') {
+      const k = sc.wanderer.t;
+      const endX = W - 30, tx = slotX(n, sc.wanderer.to);
+      const x = k < 0.5 ? 96 + (endX - 96) * (k * 2) : endX + (tx - endX) * ((k - 0.5) * 2);
+      drawPerson(ctx, x, slot.who, sc.t, { view: 'front', walk: 1 });
+      ctx.fillStyle = '#ffd23f'; ctx.font = '800 12px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('WAIT FOR HIM', W / 2, 130);
+    }
+  }
   // Nachzügler läuft von der Tür zu seinem Platz
   if (sc.late) {
     const slot = sc.slots[sc.late.slot];
     if (slot.kind === 'taken') drawPerson(ctx, sc.late.x, slot.who, sc.t, { view: sc.late.t < 1 ? 'front' : 'back', walk: sc.late.t < 1 ? 1 : 0 });
   }
-  // Spiegel-Moment: Augen des Quatschers im Spiegel
+  // Spiegel-Moment: sein Gesicht erscheint im Spiegel, dreht sich zu dir
   if (sc.mirror && !sc.mirror.done) {
+    const slot = sc.slots[sc.mirror.slot];
     const x = slotX(n, sc.mirror.slot);
-    const k = Math.min(1, sc.mirror.t / 0.3);
-    ctx.save(); ctx.globalAlpha = k;
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(x - 9, 181, 7, 5, 0, 0, Math.PI * 2); ctx.ellipse(x + 9, 181, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
-    const px = sc.playerX;
-    const dir = Math.max(-1, Math.min(1, (px - x) / 120));
-    ctx.fillStyle = '#1a1a1a'; ctx.beginPath(); ctx.arc(x - 9 + dir * 3, 181, 3, 0, Math.PI * 2); ctx.arc(x + 9 + dir * 3, 181, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,94,94,0.9)'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
-    ctx.beginPath(); ctx.moveTo(x + 9 + dir * 3, 181); ctx.lineTo(px, 181); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = '#ff5e5e'; ctx.font = '800 12px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText("HE'S LOOKING. DON'T TAP.", W / 2, 130);
-    // Restzeit
-    ctx.fillStyle = 'rgba(26,42,48,0.3)'; ctx.fillRect(W / 2 - 60, 140, 120, 4);
-    ctx.fillStyle = '#5cf2a0'; ctx.fillRect(W / 2 - 60, 140, 120 * Math.min(1, sc.mirror.t / 1.8), 4);
-    ctx.restore();
+    const k = Math.min(1, sc.mirror.t / 0.35);
+    if (slot.kind === 'taken') {
+      ctx.save();
+      ctx.beginPath(); ctx.roundRect(90, 150, W - 104, 62, 6); ctx.clip();
+      ctx.globalAlpha = 0.9 * k;
+      ctx.translate(x, 214 + 150 * (1 - k));
+      ctx.scale(0.42, 0.42);
+      drawCharacter(ctx, 0, 0, slot.who, 'front', sc.t, { look: sc.playerX < x ? -1 : 1 }, {}, false);
+      ctx.restore();
+      const px = sc.playerX;
+      ctx.strokeStyle = 'rgba(255,94,94,0.8)'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(x, 186); ctx.lineTo(px, 186); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#1a2a30'; ctx.font = '800 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(sc.mirror.wantsNod ? 'YOUR MATE IS LOOKING AT YOU' : "HE'S LOOKING AT YOU IN THE MIRROR", W / 2, 130);
+      ctx.fillStyle = 'rgba(26,42,48,0.3)'; ctx.fillRect(W / 2 - 60, 222, 120, 4);
+      ctx.fillStyle = '#ffd23f'; ctx.fillRect(W / 2 - 60, 222, 120 * Math.max(0, 1 - sc.mirror.t / 3), 4);
+    }
   }
   const walking = sc.playerState === 'walking';
   const shame = sc.playerState === 'shame' ? Math.min(1, sc.reactT * 2) : 0;
-  if (sc.playerState === 'waiting' || sc.playerState === 'door') drawPerson(ctx, DOOR_X + 40, null, sc.t, { player: true, view: 'front', shame });
-  else if (walking) drawPerson(ctx, sc.playerX, null, sc.t, { player: true, walk: 1, view: 'front' });
-  else drawPerson(ctx, sc.playerX, null, sc.t, { player: true, view: 'back', shame, look: shame > 0 ? 0 : 0 });
+  const nod = sc.mirror && sc.mirror.answered === 'look' ? Math.sin(Math.min(1, sc.reactT * 3) * Math.PI) : 0;
+  const plook = sc.mirror && sc.mirror.answered === 'look' ? (sc.playerX < slotX(n, sc.mirror.slot) ? 1 : -1) : 0;
+  if (sc.playerState === 'waiting' || sc.playerState === 'door') drawPerson(ctx, sc.playerState === 'waiting' ? sc.playerX : DOOR_X + 40, null, sc.t, { player: true, view: 'front', shame, cos: sc.cos });
+  else if (walking) drawPerson(ctx, sc.playerX, null, sc.t, { player: true, walk: 1, view: 'front', cos: sc.cos });
+  else drawPerson(ctx, sc.playerX, null, sc.t, { player: true, view: 'back', shame, look: plook, nod, cos: sc.cos });
   if (sc.bubble) drawBubble(ctx, sc.bubble.x, sc.bubble.y, sc.bubble.text, easeOutBack(Math.min(1, sc.reactT / 0.25)));
   if (sc.reactKind === 'good' && sc.reactT < 1) stamp(ctx, 'SMOOTH', '#5cf2a0', '#0a1a10', -0.12, sc.reactT, 0.7);
   if (sc.reactKind === 'bad' && sc.reactT < 1.4) stamp(ctx, 'AWKWARD', '#ff5e5e', '#2a0a0a', 0.1, sc.reactT, 1);

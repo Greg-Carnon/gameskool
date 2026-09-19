@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mulberry32 } from '../kit/rng';
-import { addLatecomer, goodSlots, isCorrect, isMoveCorrect, judge, LEVELS, makePerson, makeRound, solve, solveMove, WAIT_THRESHOLD, type Slot } from './rules';
+import { addLatecomer, goodSlots, isCorrect, isMoveCorrect, judge, LEVELS, makePerson, makeRound, mirrorLooker, placeWanderer, solve, solveMove, WAIT_THRESHOLD, type Slot } from './rules';
 
 const rng = mulberry32(3);
 const guy = (t: Parameters<typeof makePerson>[0] = 'normal'): Slot => ({ kind: 'taken', who: makePerson(t, rng) });
@@ -88,10 +88,35 @@ describe('makeRound', () => {
     const r = mulberry32(21);
     let seen = 0;
     for (let i = 0; i < 80; i++) {
-      const { slots } = makeRound(LEVELS[6], r);
+      const { slots } = makeRound(LEVELS.find((c) => c.name === 'The Boss')!, r);
       slots.forEach((s, k) => { if (s.kind === 'taken' && s.who.trait === 'duo') { seen++; const n = [slots[k - 1], slots[k + 1]].some((x) => x && x.kind === 'taken' && x.who.trait === 'duo'); expect(n).toBe(true); } });
     }
     expect(seen).toBeGreaterThan(0);
+  });
+  it('ohne Warten-Knopf ist der richtige Platz immer trocken', () => {
+    const r = mulberry32(31);
+    for (const cfg of LEVELS.filter((c) => !c.waitAllowed)) for (let i = 0; i < 60; i++) {
+      const { slots } = makeRound(cfg, r);
+      const good = goodSlots(solve(slots, false));
+      expect(good.some((g) => slots[g].kind === 'free')).toBe(true);
+    }
+  });
+  it('der Riese belegt zwei Plätze und zählt einmal', () => {
+    const cfg = LEVELS.find((c) => c.boss === 'giant')!;
+    const { slots } = makeRound(cfg, mulberry32(41));
+    const gi = slots.map((s, i) => (s.kind === 'taken' && s.who.trait === 'giant' ? i : -1)).filter((i) => i >= 0);
+    expect(gi.length).toBe(2);
+    expect(gi[1]).toBe(gi[0] + 1);
+    const far = slots.findIndex((s, i) => s.kind === 'free' && Math.abs(i - gi[0]) >= 3 && Math.abs(i - gi[1]) >= 3);
+    if (far >= 0) expect(judge(slots, far).score).toBeLessThan(WAIT_THRESHOLD);
+  });
+  it('Wanderer landet auf einem freien Platz, Spiegel wählt Nachbarn', () => {
+    const slots: Slot[] = [guy('friend'), F, F, F, F, guy('talker')];
+    const at = placeWanderer(slots, mulberry32(5));
+    expect(slots[at].kind).toBe('taken');
+    const m = mirrorLooker(slots, 2, mulberry32(6));
+    expect(m).not.toBeNull();
+    expect(typeof m!.wantsNod).toBe('boolean');
   });
   it('vor Level 5 gibt es nie eine Warten-Runde', () => {
     const r = mulberry32(10);
