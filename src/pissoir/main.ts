@@ -11,7 +11,7 @@ import { Shake } from '../kit/shake';
 import { ACHIEVEMENTS, bump, loadMeta, saveMeta, unlock, type PMeta } from './achievements';
 import type { Cosmetics } from './characters';
 import { DOOR_X, DRYER, dryerPos, FLOOR_Y, POSTERS, render, slotW, slotX, STALL, URINAL_Y, type Scene } from './render';
-import { addLatecomer, goodSlots, isCorrect, isMoveCorrect, judge, levelAt, makeRound, mirrorLooker, placeWanderer, solve, solveMove, TRAIT_INFO, type Answer, type Choice, type LevelConfig, type MoveAnswer, type Slot } from './rules';
+import { addLatecomer, goodSlots, isCorrect, isMoveCorrect, judge, levelAt, makeRound, mirrorLooker, placeWanderer, solve, solveMove, TRAIT_INFO, type Answer, type Choice, type LevelConfig, type MoveAnswer, type Round, type Slot } from './rules';
 import { themeAt, THEMES } from './themes';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -66,7 +66,7 @@ let phase: 'idle' | 'choosing' | 'reacting' | 'moving' | 'mirror' | 'dryer' | 'l
 let powers: Power[] = [];
 let steelActive = false;
 let tickAcc = 0;
-const sc: Scene = { slots: [], playerX: DOOR_X + 40, playerTarget: null, playerT: 0, playerState: 'door', reactT: 0, reactKind: 'none', reactSlot: -1, bubble: null, hover: -1, t: 0, theme: themeAt(0), good: [], stallFree: false, showStall: false, late: null, mirror: null, dryer: null, moveMode: false, wanderer: null, cos: {}, posters: [] };
+const sc: Scene = { slots: [], playerX: DOOR_X + 40, playerTarget: null, playerT: 0, playerState: 'door', reactT: 0, reactKind: 'none', reactSlot: -1, bubble: null, hover: -1, t: 0, theme: themeAt(0), good: [], stallFree: false, showStall: false, late: null, mirror: null, dryer: null, moveMode: false, wanderer: null, cos: {}, posters: [], hint: null };
 
 const startEl = $('start'), overEl = $('over'), levelEl = $('levelup'), mirrorBox = $('mirrorBox');
 const hud = { score: $('score'), streak: $('streak'), strikes: $('strikes'), level: $('level'), bladder: $('bladder'), powers: $('powers') };
@@ -80,8 +80,29 @@ function toastAch(icon: string, name: string): void { const el = $('achToast'); 
 function cosmetics(): Cosmetics { const c: Cosmetics = {}; for (const m of MILESTONES) if (meta.milestones.includes(m.rounds) && meta.wear?.includes(m.rounds)) Object.assign(c, m.cos); return c; }
 
 // ---------- Runden ----------
+/** Erste Runde eines Levels mit neuem Knopf: erzwungen, damit man ihn einmal lernt. */
+function forcedRound(): Round | null {
+  if (round !== 0) return null;
+  const want = level.name === 'Wait For It' ? 'wait' : level.name === 'The Friend' ? 'stall' : null;
+  if (!want) return null;
+  for (let i = 0; i < 400; i++) {
+    const r = makeRound(level, rng);
+    const a = solve(r.slots, level.waitAllowed, r.stallFree);
+    if (want === 'wait' && a.waitIsBest && !r.stallFree) return r;
+    if (want === 'stall' && a.waitIsBest && r.stallFree) return r;
+  }
+  return null;
+}
+
 function startRound(): void {
-  const r = makeRound(level, rng);
+  const forced = forcedRound();
+  const r = forced ?? makeRound(level, rng);
+  sc.hint = null;
+  if (forced) {
+    sc.hint = level.name === 'Wait For It'
+      ? { title: 'EVERY FREE SPOT IS NEXT TO SOMEONE', text: 'Tap WAIT, bottom left. You wait outside.', side: 'left' }
+      : { title: 'ALL BAD, BUT THE STALL IS FREE', text: 'Tap STALL, bottom right. Beats waiting.', side: 'right' };
+  }
   slots = r.slots;
   moveAnswer = null; playerSlot = -1;
   sc.wanderer = null;
@@ -90,7 +111,7 @@ function startRound(): void {
   sc.slots = slots; sc.stallFree = r.stallFree; sc.showStall = level.stalls;
   sc.playerX = DOOR_X + 40; sc.playerTarget = null; sc.playerT = 0; sc.playerState = 'door';
   sc.reactKind = 'none'; sc.reactT = 0; sc.bubble = null; sc.good = []; sc.late = null; sc.mirror = null; sc.moveMode = false;
-  bladderMax = level.bladder * (steelActive ? 2 : 1);
+  bladderMax = level.bladder * (steelActive ? 2 : 1) * (forced ? 2.5 : 1);
   bladder = bladderMax;
   phase = 'choosing';
   waitBtn.hidden = !level.waitAllowed;
@@ -191,6 +212,7 @@ function choose(choice: Choice): void {
   const ok = isCorrect(answer, choice);
   phase = 'reacting';
   sc.reactT = 0;
+  sc.hint = null;
   if (choice === 'wait' || choice === 'stall') {
     sc.playerState = 'waiting';
     sc.playerTarget = null;
@@ -447,7 +469,7 @@ bindPointer(view, {
     unlockAudio();
     if (phase === 'dryer') { dryerTap(); return; }
     if (phase !== 'choosing' && phase !== 'moving') return;
-    if (y < URINAL_Y - 90 || y > FLOOR_Y + 60) return;
+    if (y < URINAL_Y - 110 || y > FLOOR_Y + 30) return;
     const n = slots.length;
     const w = slotW(n);
     for (let i = 0; i < n; i++) if (Math.abs(x - slotX(n, i)) < Math.max(w / 2 + 8, (W - 110) / n / 2)) { choose(phase === 'moving' && i === playerSlot ? 'stay' : i); return; }
@@ -462,6 +484,8 @@ $('dailyBtn').addEventListener('click', () => { unlockAudio(); startGame(true); 
 $('againBtn').addEventListener('click', () => { unlockAudio(); startGame(daily); });
 $('menuBtn').addEventListener('click', () => { overEl.hidden = true; renderStart(); startEl.hidden = false; });
 $('lvGo').addEventListener('click', () => { unlockAudio(); levelEl.hidden = true; startRound(); });
+$('helpBtn').addEventListener('click', () => { const p = $('helpPanel'); p.hidden = !p.hidden; });
+$('helpClose').addEventListener('click', () => { $('helpPanel').hidden = true; });
 renderStart();
 if (location.search.includes('debug')) {
   (window as unknown as { __pq: () => unknown }).__pq = () => ({ phase, good: phase === 'moving' && moveAnswer ? (moveAnswer.moveIsRight ? moveAnswer.scores.map((_, i) => i).filter((i) => isMoveCorrect(moveAnswer!, i)) : ['stay']) : goodSlots(answer), wait: answer.waitIsBest, stall: answer.stallFree, n: slots.length, mirror: sc.mirror && !sc.mirror.done ? (sc.mirror.wantsNod ? 'look' : 'wall') : null, dryer: !!sc.dryer, level: levelIndex, round, playerSlot, wanderer: !!sc.wanderer && !sc.wanderer.settled });

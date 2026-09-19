@@ -45,6 +45,11 @@
     .powers .pw { margin: 0; width: 44px; height: 44px; padding: 0; border-radius: 12px; font-size: 20px; background: #fff; box-shadow: 0 4px 0 #c9d6da; }
     #waitBtn { position: fixed; left: 12px; bottom: max(14px, env(safe-area-inset-bottom)); margin: 0; background: #fff; color: var(--ink); box-shadow: 0 5px 0 #c9d6da; font-size: 16px; padding: 12px 22px; z-index: 6; }
     #waitBtn[hidden] { display: none; }
+    #helpBtn { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); margin: 0; width: 44px; height: 44px; padding: 0; border-radius: 50%; background: #fff; color: var(--ink); box-shadow: 0 4px 0 #c9d6da; font-size: 20px; z-index: 6; }
+    .help { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(26,42,48,0.6); padding: 20px; z-index: 12; }
+    .help[hidden] { display: none; }
+    .rule { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; font-size: 14px; line-height: 1.35; padding: 6px 0; border-top: 1px solid #dfe9ec; }
+    .rule span:first-child { font-size: 20px; }
     #stallBtn { position: fixed; right: 12px; bottom: max(14px, env(safe-area-inset-bottom)); margin: 0; background: #fff; color: var(--ink); box-shadow: 0 5px 0 #c9d6da; font-size: 16px; padding: 12px 22px; z-index: 6; }
     #stallBtn[hidden] { display: none; }
     .achtoast { position: fixed; left: 50%; bottom: 90px; transform: translate(-50%, 10px); background: var(--yellow); color: var(--ink); font-weight: 800; font-size: 13px; padding: 8px 14px; border-radius: 999px; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; z-index: 8; white-space: nowrap; }
@@ -100,7 +105,9 @@
   <div class="bar"><div id="bladder"></div></div>
   <div class="barlbl">BLADDER</div>
   <div class="powers" id="powers"></div>
-  <button id="waitBtn" hidden>🚪 Wait</button>
+  <button id="waitBtn" hidden>🚪 Wait outside</button>
+  <button id="helpBtn">?</button>
+  <div class="help" id="helpPanel" hidden><div class="card" style="text-align:left"><h2 style="margin:0 0 8px;font-family:'Archivo Black',Inter,sans-serif">THE CODE</h2><div class="rule"><span>🚻</span><span><b>Never next to a guy.</b> One urinal gap, or the wall.</span></div><div class="rule"><span>🚪</span><span><b>Every free spot next to someone?</b> Tap WAIT (bottom left).</span></div><div class="rule"><span>🚽</span><span><b>Stall free while all urinals are bad?</b> Tap STALL. Beats waiting.</span></div><div class="rule"><span>🤝</span><span><b>Green shirt is your mate.</b> Next to him is fine. Nod when he looks.</span></div><div class="rule"><span>🚶</span><span><b>Someone walks in next to you?</b> Tap a clean urinal to move, or tap yourself to stay.</span></div><div class="rule"><span>🪞</span><span><b>Someone stares in the mirror?</b> Wall. Unless it is your mate.</span></div><div class="rule"><span>🚫</span><span><b>Broken is broken.</b> Wet floor only if nothing else.</span></div><button id="helpClose">Got it</button></div></div>
   <button id="stallBtn" hidden>🚽 Stall</button>
   <div class="achtoast" id="achToast"></div>
   <div class="mirrorbox" id="mirrorBox" hidden><button id="mirrorWall">🧱 Stare at the wall</button><button id="mirrorLook">👀 Look back</button></div>
@@ -110,7 +117,7 @@
       <h1>Piss<span>oir</span></h1>
       <p class="tag">Don't be weird.</p>
       <p>Everyone knows the code. Keep your distance. Never next to a guy.</p>
-      <p><b>Tap the right urinal</b> before your bladder gives up. Three awkward moments and you are done.</p>
+      <p><b>Tap the right urinal</b> before your bladder gives up. If every free one is next to someone, tap <b>WAIT</b>. Three awkward moments and you are done.</p>
       <p class="sub" id="bestLine"></p>
       <div class="achs" id="achs"></div>
       <button id="startBtn">GO</button>
