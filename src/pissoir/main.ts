@@ -10,6 +10,7 @@ import { Shake } from '../kit/shake';
 import { load, save } from '../kit/storage';
 import { DOOR_X, FLOOR_Y, render, slotW, slotX, URINAL_Y, type Scene } from './render';
 import { isCorrect, judge, levelAt, makeRound, solve, TRAIT_INFO, type Answer, type LevelConfig, type Slot } from './rules';
+import { themeAt } from './themes';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('c');
@@ -17,15 +18,16 @@ const view = createView(canvas);
 const particles = new Particles(200);
 const floats = new FloatText(12);
 const shake = new Shake(8, 3);
+// ZzFX: [volume, randomness, frequency, attack, sustain, release, shape(0 sin,1 tri,2 saw,3 tan,4 noise), shapeCurve, slide, deltaSlide, pitchJump, pitchJumpTime, repeatTime, noise, modulation, bitCrush, delay, sustainVolume, decay]
 const sfx = createSfx({
-  step: [0.3, 0.05, 180, 0.005, 0.01, 0.05, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6, 0.01],
-  good: [0.6, 0.02, 700, 0.01, 0.05, 0.15, 0, 1.4, 0, 0, 300, 0.06, 0, 0, 0, 0, 0, 0.8, 0.02],
-  bad: [0.9, 0.05, 160, 0.02, 0.15, 0.35, 2, 0.8, -6, 0, 0, 0, 0, 0.4, 0, 0.2, 0, 0.7, 0.05],
-  level: [0.7, 0.02, 500, 0.02, 0.2, 0.5, 0, 1.3, 0, 0, 250, 0.2, 0, 0, 0, 0, 0, 0.7, 0.05],
-  over: [1.2, 0.1, 110, 0.05, 0.4, 0.8, 2, 1.0, -6, 0, 0, 0, 0, 0.5, 0, 0.3, 0, 0.6, 0.1],
-  power: [0.6, 0.02, 900, 0.01, 0.1, 0.3, 0, 1.5, 0, 0, 400, 0.1, 0, 0, 0, 0, 0, 0.7, 0.03],
-  tick: [0.3, 0, 1200, 0.005, 0.01, 0.03, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.01],
-  flush: [0.8, 0.1, 200, 0.05, 0.3, 0.6, 4, 0.5, 0, 0, 0, 0, 0, 1.5, 0, 0.4, 0, 0.5, 0.1],
+  step: [0.18, 0.1, 90, 0.002, 0.01, 0.05, 4, 0.4, 0, 0, 0, 0, 0, 0.4, 0, 0, 0, 0.5, 0.02],
+  good: [0.35, 0.01, 880, 0.005, 0.06, 0.18, 1, 1.2, 0, 0, 440, 0.06, 0, 0, 0, 0, 0, 0.7, 0.04],
+  bad: [0.45, 0.02, 240, 0.02, 0.12, 0.3, 1, 1.4, -3, 0, 0, 0, 0, 0, 3, 0, 0, 0.6, 0.06],
+  level: [0.4, 0.01, 523, 0.01, 0.12, 0.35, 1, 1.3, 0, 0, 262, 0.1, 0.12, 0, 0, 0, 0, 0.7, 0.05],
+  over: [0.5, 0.05, 180, 0.05, 0.3, 0.7, 1, 0.8, -2, 0, 0, 0, 0, 0, 2, 0, 0, 0.6, 0.1],
+  power: [0.35, 0.01, 1046, 0.005, 0.08, 0.22, 1, 1.5, 0, 0, 350, 0.07, 0, 0, 0, 0, 0, 0.7, 0.04],
+  tick: [0.15, 0, 1400, 0.002, 0.005, 0.02, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.01],
+  flush: [0.4, 0.05, 260, 0.1, 0.5, 1.0, 4, 0.5, -1.5, 0, 0, 0, 0, 1.2, 0, 0.2, 0, 0.4, 0.15],
 });
 
 interface Meta { best: number; bestLevel: number; games: number; milestones: number[] }
@@ -57,7 +59,7 @@ let phase: 'idle' | 'choosing' | 'reacting' | 'levelup' | 'over' = 'idle';
 let powers: Power[] = [];
 let steelActive = false;
 let tickAcc = 0;
-const sc: Scene = { slots: [], playerX: DOOR_X + 40, playerTarget: null, playerT: 0, playerState: 'door', reactT: 0, reactKind: 'none', reactSlot: -1, bubble: null, hover: -1, t: 0 };
+const sc: Scene = { slots: [], playerX: DOOR_X + 40, playerTarget: null, playerT: 0, playerState: 'door', reactT: 0, reactKind: 'none', reactSlot: -1, bubble: null, hover: -1, t: 0, theme: themeAt(0) };
 
 const startEl = $('start'), overEl = $('over'), levelEl = $('levelup'), hud = { score: $('score'), streak: $('streak'), strikes: $('strikes'), level: $('level'), bladder: $('bladder'), powers: $('powers') };
 const waitBtn = $<HTMLButtonElement>('waitBtn');
@@ -78,8 +80,11 @@ function startRound(): void {
 
 function startLevel(i: number): void {
   levelIndex = i; level = levelAt(i); round = 0; steelActive = false;
+  sc.theme = themeAt(i);
+  document.body.style.background = sc.theme.wall;
   hud.level.textContent = `L${i + 1} · ${level.name}`;
   $('lvName').textContent = level.name;
+  $('lvPlace').textContent = `${sc.theme.name} restroom`;
   $('lvIntro').textContent = level.intro;
   const offer = (['steel', 'skip', 'second'] as Power[]).filter(() => true).sort(() => rng() - 0.5).slice(0, 2);
   const box = $('lvPowers');
@@ -254,7 +259,7 @@ startLoop({
     particles.update(dt); floats.update(dt); shake.update(dt);
   },
   render() {
-    beginFrame(view, '#dfe9ec');
+    beginFrame(view, sc.theme.wall);
     const o = shake.offset();
     view.ctx.translate(o.x, o.y);
     render(view.ctx, sc);
