@@ -49,3 +49,43 @@ Gregs Feedback: Sounds katastrophal, keine Arme, eigene Figur komisch und nicht 
 - **Spieler:** generischer Typ, braune Haare, blaues Hemd mit hellem Streifen. Kein Jack.
 - **Räume** (`src/pissoir/themes.ts`), pro Level: Office (Waschbecken), Pub (Quiz-Poster, warmes Licht), Gas station (Graffiti "WASH YOUR HANDS"), Club (dunkel, pinkes Neon, Flackern), Stadium (Snackautomat), Airport (Pflanze), School (Kreidetafel mit der Regel), Festival (Dixi-Plane statt Kacheln). Kachelgröße, Fugen, Boden, Tür, Licht und Pissoir-Tint pro Thema. Der Level-Screen nennt den Ort.
 - **Sounds:** alle neu und leiser. Schritte als weiches Rauschen, richtig als Dreieck-Glöckchen mit Sprung nach oben, falsch als dumpfes Wah mit Vibrato statt Sägezahn, Level als kleiner Zweiklang, Spülung als abfallendes Rauschen über eine Sekunde. **Nicht per Ohr geprüft, Playwright hat keinen Lautsprecher.** Wenn etwas noch stört, bitte den konkreten Sound nennen.
+
+## Runde drei, 19. September: echte Sounds, Lösbarkeit
+
+**Sounds aus Gregs Library** ("FOUR Editors Sound Effects", 1813 Dateien, lokal unter `Development/buckets/beyond100/Soundeffects`). Lizenz erlaubt Nutzung und Veränderung im eigenen Werk und Veröffentlichung in allen Medien, verbietet Weitergabe der Rohdateien als Sammlung. Deshalb: Clips gekürzt, normalisiert (loudnorm −16 LUFS, Effekte) und als Mono-MP3 80 kbit/s nach `public/audio/pissoir/` konvertiert. Der Ordner ist in `.gitignore`, liegt also nicht im öffentlichen Repo, wird aber per `.vercelignore`-Ausnahme mit deployt. Wer das Repo klont, hat das Spiel ohne Sounds, es läuft trotzdem (Sample-Player fängt 404 ab).
+
+| Rolle | Quelle | Schnitt |
+|---|---|---|
+| Schritt | Fantasy Step | 0,45 s |
+| Reißverschluss beim Ankommen | Short foley Zipper | 0,9 s |
+| Spülung | Flushing Sink | 1,2 s |
+| Richtig | Bells Impact | 1,4 s |
+| Falsch | Jolt Error und Mystery Error im Wechsel | 0,7 und 1,2 s |
+| Level geschafft | Ambient Notice | 2,2 s |
+| Game Over | Error Bang | 2,4 s |
+| Perk | Tones Up Quick | 0,67 s |
+| Blase fast leer | Tension Builders Clock Short | 0,35 s |
+| Tür beim Rundenstart | Opening Door | 1,1 s |
+| Streak alle 5 | Crowd Applause | 2,2 s |
+| Meilenstein | Mystery Bells | 1,6 s |
+| Raum-Ambience pro Thema, 10-s-Loop, leise (−24 LUFS) | At Work Background, Crowd Cafe, Machine Noise Soft, Ambience Pulsory, Crowd Match, Wide Open Space, People Indoor, Crowd Cheering | |
+
+Auswahl nach Namen, Dauer und Pegel, nicht per Ohr. Wenn ein Clip nicht passt, austauschen ist eine Zeile im Konvertierungsskript (steht im Chat-Verlauf, kann in `scripts/` wandern).
+
+**Lösbarkeit.** Gregs Eindruck stimmte: Vorher galt nur der Platz mit dem exakt niedrigsten Wert. Ein Platz mit einem Pissoir Abstand, aber ohne Randbonus, war "falsch", obwohl er sich richtig anfühlt. Und in Level 2 konnte der beste Platz direkt neben jemandem liegen. Jetzt:
+- Warten-Schwelle 8 statt 12: neben irgendjemandem stehen (10, am Rand 8) ist nie richtig. Regel in einem Satz: Nie neben jemanden, außer neben deinen Kumpel. Wenn es nicht anders geht, warten.
+- Toleranz 5: alles, was höchstens 5 Punkte schlechter ist als der beste Platz, zählt. Ein Pissoir Abstand ohne Rand ist damit richtig.
+- Generator garantiert: ohne Warten-Knopf gibt es immer mindestens einen sauberen Platz, mit Warten-Knopf entweder einen sauberen Platz oder Warten ist eindeutig. Test über 60 Runden pro Level.
+- Nach einem Fehler blinken die richtigen Plätze grün mit "HERE". Das ist der Lern-Moment.
+
+## Ausbaustufen, sortiert nach Wirkung
+
+1. **Nachzügler.** Nach deiner Wahl kommt jemand rein und stellt sich falsch neben dich. Reaktion: du darfst einmal wechseln. Neues Verhalten, neue Blase, große Comedy.
+2. **Blickkontakt im Spiegel.** Ein Spiegel über den Pissoirs, in dem der Quatscher dich sucht. Richtig: geradeaus starren (Tap auf das Pissoir, nicht auf den Spiegel).
+3. **Handtrockner-Bonusrunde** nach jedem Level: Timing-Tap, wenn der Trockner-Balken im grünen Bereich ist. Perk-Währung.
+4. **Charakter-Ausbau:** der Sänger (summt, alle drehen sich um), der Typ mit dem Hund, der Bauarbeiter mit Ausrüstung, der Ex-Kollege der dich erkennt, zwei Freunde die gemeinsam gehen (dann ist der Platz dazwischen tödlich).
+5. **Kabinen-Ebene:** Ab Level 6 zusätzlich Kabinen rechts. Manchmal ist die Kabine die richtige Antwort (alle Pissoirs schlecht, aber du willst nicht warten). Dritter Knopf, bricht die Ein-Tap-Regel leicht.
+6. **Story-Rahmen wie bei Sonar:** ein Tag im Leben, jedes Level ein Ort dieses Tages (Büro morgens, Kneipe abends, Festival am Wochenende), mit einem Satz Intro.
+7. **Daily Run:** ein Seed pro Tag, gleiche Räume für alle, Share-Text mit Runden und "awkward moments".
+8. **Achievements:** "Never next to the boss", "Waited 10 times", "Rush Hour survived", "Friend of the friend".
+9. **Wochen-Highscore in Vercel KV**, wenn Backend erlaubt.
