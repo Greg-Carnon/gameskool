@@ -89,3 +89,17 @@ Auswahl nach Namen, Dauer und Pegel, nicht per Ohr. Wenn ein Clip nicht passt, a
 7. **Daily Run:** ein Seed pro Tag, gleiche Räume für alle, Share-Text mit Runden und "awkward moments".
 8. **Achievements:** "Never next to the boss", "Waited 10 times", "Rush Hour survived", "Friend of the friend".
 9. **Wochen-Highscore in Vercel KV**, wenn Backend erlaubt.
+
+## Runde vier, 19. September: alle Ausbaustufen
+
+1. **Nachzügler** (ab Level 3, 25 bis 45 Prozent der richtigen Runden): jemand kommt zur Tür rein und stellt sich neben dich. "MOVE?" Tap auf einen anderen Platz wechselt, Tap auf dich selbst bleibt. Wechseln ist richtig, wenn ein sauberer Platz existiert, sonst ist Bleiben richtig ("Hopping around is weirder than staying"). Logik in `solveMove`, getestet.
+2. **Spiegel** (ab Level 4, 35 Prozent, nur wenn ein Quatscher oder Ex-Kollege da ist): Augen erscheinen im Spiegelstreifen und schauen zu dir, rote Sichtlinie, "HE'S LOOKING. DON'T TAP." Wer 1,8 s nicht in den oberen Bereich tippt, ist "ICE COLD". Tap oben ist Blickkontakt, Strike.
+3. **Handtrockner** nach jedem Level: Zeiger pendelt, Tap in der grünen Zone gibt einen Dry-Hands-Token, der im nächsten Level-Screen einen zweiten Perk erlaubt. Gelb daneben +20 Punkte.
+4. **Neue Charaktere**: Sänger (lila, Noten steigen auf), Hunde-Typ (Hund an der Leine neben ihm), Duo (zwei in Orange, immer nebeneinander, die Plätze daneben sind schlecht), Ex-Kollege ("Wait. Didn't you get fired?").
+5. **Kabine** ab Level 6 rechts mit VACANT/IN USE-Schild und eigenem Knopf. Regel: Wenn alle Pissoirs schlecht sind, schlägt die freie Kabine das Warten. Ist sie besetzt, ist Warten richtig.
+6. **Story**: jedes Level hat Uhrzeit, Ort und einen Satz ("07:40 · Office. Monday. Coffee number two hits early."). Acht Orte ergeben einen Tag vom Büro bis zum Stadion. Danach "Day 2" und so weiter.
+7. **Daily Run**: eigener Knopf, Seed aus dem Datum, gleiche Räume für alle, beste Rundenzahl pro Tag gespeichert, Share-Text mit Runden, Level, "awkward moments" und Emoji-Zeile.
+8. **12 Achievements** mit Toast beim Freischalten, Liste auf dem Startscreen.
+9. **Wochen-Highscore**: `api/scores.ts` als Edge Function, Redis-Sorted-Set pro Kalenderwoche, Top 10, Name auf 14 Zeichen gefiltert. Der Client zeigt das Board nur, wenn die API antwortet. **Braucht einen Store:** im Vercel-Dashboard unter Storage einen Upstash-Redis (KV) anlegen und mit dem Projekt `gameskool` verbinden, dann sind `KV_REST_API_URL` und `KV_REST_API_TOKEN` gesetzt. Bis dahin antwortet die API 503 und das Board bleibt unsichtbar.
+
+78 Tests. Live geprüft: Level 1 bis Nachzügler, Handtrockner, Kabinen-Level, Daily-Start.
