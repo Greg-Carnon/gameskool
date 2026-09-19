@@ -164,7 +164,7 @@ function drawPosters(ctx: CanvasRenderingContext2D, posters: Scene['posters'], n
   for (const po of posters) {
     const x = slotX(n, po.slot);
     ctx.save();
-    ctx.translate(x, 262);
+    ctx.translate(x, 232);
     ctx.rotate(po.rot);
     ctx.fillStyle = 'rgba(0,0,0,0.15)'; rr(ctx, -20, -20, 40, 46, 2); ctx.fill();
     ctx.fillStyle = po.color; rr(ctx, -21, -22, 40, 46, 2); ctx.fill();
@@ -319,8 +319,8 @@ export function render(ctx: CanvasRenderingContext2D, sc: Scene): void {
       ctx.save();
       ctx.beginPath(); ctx.roundRect(90, 150, W - 104, 62, 6); ctx.clip();
       ctx.globalAlpha = 0.9 * k;
-      ctx.translate(x, 214 + 150 * (1 - k));
-      ctx.scale(0.42, 0.42);
+      ctx.translate(x, 268 + 120 * (1 - k));
+      ctx.scale(0.6, 0.6);
       drawCharacter(ctx, 0, 0, slot.who, 'front', sc.t, { look: sc.playerX < x ? -1 : 1 }, {}, false);
       ctx.restore();
       const px = sc.playerX;
