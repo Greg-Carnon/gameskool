@@ -5,11 +5,12 @@ import { bindPointer } from '../kit/input';
 import { startLoop } from '../kit/loop';
 import { Particles } from '../kit/particles';
 import { mulberry32 } from '../kit/rng';
-import { createSfx, unlockAudio } from '../kit/sfx';
+import { unlockAudio } from '../kit/sfx';
+import { createSamples } from '../kit/samples';
 import { Shake } from '../kit/shake';
 import { load, save } from '../kit/storage';
 import { DOOR_X, FLOOR_Y, render, slotW, slotX, URINAL_Y, type Scene } from './render';
-import { isCorrect, judge, levelAt, makeRound, solve, TRAIT_INFO, type Answer, type LevelConfig, type Slot } from './rules';
+import { goodSlots, isCorrect, judge, levelAt, makeRound, solve, TRAIT_INFO, type Answer, type LevelConfig, type Slot } from './rules';
 import { themeAt } from './themes';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -18,17 +19,19 @@ const view = createView(canvas);
 const particles = new Particles(200);
 const floats = new FloatText(12);
 const shake = new Shake(8, 3);
-// ZzFX: [volume, randomness, frequency, attack, sustain, release, shape(0 sin,1 tri,2 saw,3 tan,4 noise), shapeCurve, slide, deltaSlide, pitchJump, pitchJumpTime, repeatTime, noise, modulation, bitCrush, delay, sustainVolume, decay]
-const sfx = createSfx({
-  step: [0.18, 0.1, 90, 0.002, 0.01, 0.05, 4, 0.4, 0, 0, 0, 0, 0, 0.4, 0, 0, 0, 0.5, 0.02],
-  good: [0.35, 0.01, 880, 0.005, 0.06, 0.18, 1, 1.2, 0, 0, 440, 0.06, 0, 0, 0, 0, 0, 0.7, 0.04],
-  bad: [0.45, 0.02, 240, 0.02, 0.12, 0.3, 1, 1.4, -3, 0, 0, 0, 0, 0, 3, 0, 0, 0.6, 0.06],
-  level: [0.4, 0.01, 523, 0.01, 0.12, 0.35, 1, 1.3, 0, 0, 262, 0.1, 0.12, 0, 0, 0, 0, 0.7, 0.05],
-  over: [0.5, 0.05, 180, 0.05, 0.3, 0.7, 1, 0.8, -2, 0, 0, 0, 0, 0, 2, 0, 0, 0.6, 0.1],
-  power: [0.35, 0.01, 1046, 0.005, 0.08, 0.22, 1, 1.5, 0, 0, 350, 0.07, 0, 0, 0, 0, 0, 0.7, 0.04],
-  tick: [0.15, 0, 1400, 0.002, 0.005, 0.02, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.01],
-  flush: [0.4, 0.05, 260, 0.1, 0.5, 1.0, 4, 0.5, -1.5, 0, 0, 0, 0, 1.2, 0, 0.2, 0, 0.4, 0.15],
-});
+const samples = createSamples('/audio/pissoir');
+samples.preload(['step', 'zip', 'flush', 'good', 'bad', 'bad2', 'over', 'level', 'power', 'tick', 'door', 'applause', 'bells']);
+const AMB: Record<string, string> = { Office: 'office', Pub: 'pub', 'Gas station': 'gas', Club: 'club', Stadium: 'stadium', Airport: 'airport', School: 'school', Festival: 'festival' };
+const sfx = {
+  play(name: string, jitter = 0.04, vol = 1): void {
+    const map: Record<string, { n: string; v: number }> = {
+      step: { n: 'step', v: 0.5 }, good: { n: 'good', v: 0.8 }, bad: { n: Math.random() < 0.5 ? 'bad' : 'bad2', v: 0.8 }, level: { n: 'level', v: 0.8 },
+      over: { n: 'over', v: 0.8 }, power: { n: 'power', v: 0.7 }, tick: { n: 'tick', v: 0.4 }, flush: { n: 'flush', v: 0.7 }, zip: { n: 'zip', v: 0.6 }, door: { n: 'door', v: 0.6 }, applause: { n: 'applause', v: 0.7 }, bells: { n: 'bells', v: 0.7 },
+    };
+    const m = map[name]; if (!m) return;
+    samples.play(m.n, { vol: m.v * vol, jitter });
+  },
+};
 
 interface Meta { best: number; bestLevel: number; games: number; milestones: number[] }
 const META_KEY = 'pissoir-meta';
@@ -59,7 +62,7 @@ let phase: 'idle' | 'choosing' | 'reacting' | 'levelup' | 'over' = 'idle';
 let powers: Power[] = [];
 let steelActive = false;
 let tickAcc = 0;
-const sc: Scene = { slots: [], playerX: DOOR_X + 40, playerTarget: null, playerT: 0, playerState: 'door', reactT: 0, reactKind: 'none', reactSlot: -1, bubble: null, hover: -1, t: 0, theme: themeAt(0) };
+const sc: Scene = { slots: [], playerX: DOOR_X + 40, playerTarget: null, playerT: 0, playerState: 'door', reactT: 0, reactKind: 'none', reactSlot: -1, bubble: null, hover: -1, t: 0, theme: themeAt(0), good: [] };
 
 const startEl = $('start'), overEl = $('over'), levelEl = $('levelup'), hud = { score: $('score'), streak: $('streak'), strikes: $('strikes'), level: $('level'), bladder: $('bladder'), powers: $('powers') };
 const waitBtn = $<HTMLButtonElement>('waitBtn');
@@ -75,13 +78,16 @@ function startRound(): void {
   bladderMax = level.bladder * (steelActive ? 2 : 1);
   bladder = bladderMax;
   phase = 'choosing';
+  sc.good = [];
   waitBtn.hidden = !level.waitAllowed;
+  sfx.play('door', 0.05, 0.5);
 }
 
 function startLevel(i: number): void {
   levelIndex = i; level = levelAt(i); round = 0; steelActive = false;
   sc.theme = themeAt(i);
   document.body.style.background = sc.theme.wall;
+  samples.loop(`amb-${AMB[sc.theme.name] ?? 'office'}`, 0.9);
   hud.level.textContent = `L${i + 1} · ${level.name}`;
   $('lvName').textContent = level.name;
   $('lvPlace').textContent = `${sc.theme.name} restroom`;
@@ -129,6 +135,7 @@ function choose(choice: number | 'wait'): void {
     sc.playerTarget = null;
     sc.reactKind = ok ? 'good' : 'bad';
     sc.reactSlot = -1;
+    if (!ok) sc.good = goodSlots(answer);
     if (!ok) sc.bubble = { x: DOOR_X + 40, y: FLOOR_Y - 200, text: 'Why are you just standing there?' };
     resolve(ok, ok ? 'Smart. Waited it out.' : 'Nothing wrong with that spot, mate.');
     return;
@@ -143,6 +150,8 @@ function choose(choice: number | 'wait'): void {
     sc.reactKind = ok ? 'good' : 'bad';
     sc.reactSlot = choice;
     sc.reactT = 0;
+    if (ok) sfx.play('zip', 0.05, 0.5);
+    else sc.good = goodSlots(answer);
     const v = judge(slots, choice);
     if (!ok) {
       let speaker = -1;
@@ -168,9 +177,10 @@ function resolve(ok: boolean, reason: string): void {
     floats.add(`+${gained}`, W / 2, 300, { color: '#5cf2a0', size: 24 });
     if (streak > 0 && streak % 3 === 0) floats.add(`×${multiplier()}`, W / 2, 340, { color: '#ffd23f', size: 30, life: 1 });
     particles.emit({ x: sc.playerTarget === null ? DOOR_X + 40 : slotX(slots.length, sc.playerTarget), y: URINAL_Y + 60, count: 20, speed: 120, life: 0.5, color: '#5cf2a0', size: 3 });
-    sfx.play('good', 0.05, 0.7 + Math.min(0.5, streak * 0.05));
+    sfx.play('good', 0.03, 0.7 + Math.min(0.4, streak * 0.04));
+    if (streak > 0 && streak % 5 === 0) sfx.play('applause', 0.02, 0.5);
     vibrate(12);
-    for (const m of MILESTONES) if (rounds === m && !meta.milestones.includes(m)) { meta.milestones.push(m); save(META_KEY, meta); setTimeout(() => { floats.add(`${m} ROUNDS · MILESTONE`, W / 2, 380, { color: '#ffd23f', size: 18, life: 1.6 }); sfx.play('level'); }, 500); }
+    for (const m of MILESTONES) if (rounds === m && !meta.milestones.includes(m)) { meta.milestones.push(m); save(META_KEY, meta); setTimeout(() => { floats.add(`${m} ROUNDS · MILESTONE`, W / 2, 380, { color: '#ffd23f', size: 18, life: 1.6 }); sfx.play('bells'); }, 500); }
   } else {
     streak = 0;
     strikes++;
@@ -200,6 +210,7 @@ function nextRound(ok: boolean): void {
 function gameOver(reason: string): void {
   phase = 'over';
   sfx.play('over');
+  samples.stopLoop(1.5);
   meta.games++;
   if (score > meta.best) meta.best = score;
   save(META_KEY, meta);
@@ -249,11 +260,11 @@ startLoop({
       sc.playerT = Math.min(1, sc.playerT + dt / 0.6);
       const tx = slotX(slots.length, sc.playerTarget);
       sc.playerX = DOOR_X + 40 + (tx - DOOR_X - 40) * (1 - Math.pow(1 - sc.playerT, 3));
-      tickAcc += dt; if (tickAcc > 0.15) { tickAcc = 0; sfx.play('step', 0.2, 0.4); }
+      tickAcc += dt; if (tickAcc > 0.22) { tickAcc = 0; sfx.play('step', 0.12, 0.5); }
     }
     if (phase === 'choosing') {
       bladder -= dt;
-      if (bladder < bladderMax * 0.3) { tickAcc += dt; if (tickAcc > 0.25) { tickAcc = 0; sfx.play('tick', 0.02, 0.4); } }
+      if (bladder < bladderMax * 0.3) { tickAcc += dt; if (tickAcc > 0.4) { tickAcc = 0; sfx.play('tick', 0.02, 0.5); } }
       if (bladder <= 0) { bladder = 0; phase = 'reacting'; sc.reactKind = 'bad'; sc.playerState = 'shame'; sc.reactT = 0; sc.bubble = { x: DOOR_X + 40, y: FLOOR_Y - 200, text: 'Too late.' }; resolve(false, 'Too slow. Now everyone knows.'); }
     }
     particles.update(dt); floats.update(dt); shake.update(dt);

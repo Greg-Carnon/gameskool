@@ -20,6 +20,7 @@ export interface Scene {
   hover: number;
   t: number;
   theme: Theme;
+  good: number[];   // nach einem Fehler: die Plätze, die richtig gewesen wären
 }
 
 const LEFT = 96, RIGHT = 14;
@@ -334,8 +335,14 @@ export function render(ctx: CanvasRenderingContext2D, sc: Scene): void {
   const w = slotW(n);
   drawRoom(ctx, sc.theme, sc.t);
   sc.slots.forEach((slot, i) => {
-    const hl = sc.reactKind === 'good' && sc.reactSlot === i ? Math.max(0, 1 - sc.reactT / 1.2) : 0;
+    let hl = sc.reactKind === 'good' && sc.reactSlot === i ? Math.max(0, 1 - sc.reactT / 1.2) : 0;
+    if (sc.reactKind === 'bad' && sc.good.includes(i)) hl = 0.5 + 0.5 * Math.sin(sc.t * 8);
     drawUrinal(ctx, slotX(n, i), w, slot, hl, sc.t, sc.theme);
+    if (sc.reactKind === 'bad' && sc.good.includes(i) && sc.reactT > 0.4) {
+      ctx.fillStyle = '#5cf2a0'; ctx.font = '800 11px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('HERE', slotX(n, i), URINAL_Y - 100);
+      ctx.beginPath(); ctx.moveTo(slotX(n, i) - 6, URINAL_Y - 92); ctx.lineTo(slotX(n, i), URINAL_Y - 84); ctx.lineTo(slotX(n, i) + 6, URINAL_Y - 92); ctx.closePath(); ctx.fill();
+    }
   });
   sc.slots.forEach((slot, i) => {
     if (slot.kind !== 'taken') return;

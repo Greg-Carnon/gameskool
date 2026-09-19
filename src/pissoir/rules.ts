@@ -45,7 +45,8 @@ export const TRAIT_INFO: Record<Trait, { label: string; adj: number; near: numbe
 
 export const WALL_BONUS = -2;
 export const WET_PENALTY = 6;
-export const WAIT_THRESHOLD = 12;
+export const WAIT_THRESHOLD = 8;   // ab hier ist Warten richtig: neben irgendjemandem stehen zählt schon
+export const TOLERANCE = 5;        // Plätze, die höchstens so viel schlechter sind als der beste, gelten auch
 
 export interface Verdict { score: number; reasons: string[] }
 
@@ -83,7 +84,14 @@ export function solve(slots: Slot[], waitAllowed: boolean): Answer {
 export function isCorrect(ans: Answer, choice: number | 'wait'): boolean {
   if (choice === 'wait') return ans.waitIsBest;
   if (ans.waitIsBest) return false;
-  return ans.scores[choice] === ans.best && Number.isFinite(ans.best);
+  const sc = ans.scores[choice];
+  return Number.isFinite(ans.best) && Number.isFinite(sc) && sc <= ans.best + TOLERANCE && sc < WAIT_THRESHOLD;
+}
+
+/** Alle Plätze, die als richtig gelten. Leer, wenn Warten die Antwort ist. */
+export function goodSlots(ans: Answer): number[] {
+  if (ans.waitIsBest) return [];
+  return ans.scores.map((_, i) => i).filter((i) => isCorrect(ans, i));
 }
 
 const SHIRTS = ['#e63946', '#457b9d', '#f4a261', '#8d99ae', '#6d597a', '#2a9d8f', '#e9c46a'];
@@ -111,10 +119,11 @@ export function makeRound(cfg: LevelConfig, rng: () => number): Slot[] {
     for (let k = 0; k < cfg.broken && idx.length && rng() < 0.8; k++) slots[pick()] = { kind: 'broken' };
     for (let k = 0; k < cfg.wet && idx.length && rng() < 0.7; k++) slots[pick()] = { kind: 'wet' };
     const ans = solve(slots, cfg.waitAllowed);
-    const winners = ans.scores.filter((s) => s === ans.best).length;
-    if (!Number.isFinite(ans.best) && !cfg.waitAllowed) continue;
-    if (!ans.waitIsBest && winners > 2) continue;
+    if (!Number.isFinite(ans.best)) continue;
     if (!cfg.waitAllowed && ans.best >= WAIT_THRESHOLD) continue;
+    const winners = ans.scores.filter((x) => Number.isFinite(x) && x <= ans.best + TOLERANCE && x < WAIT_THRESHOLD).length;
+    if (!ans.waitIsBest && winners > 3) continue;
+    if (!ans.waitIsBest && winners === 0) continue;
     return slots;
   }
   const slots: Slot[] = Array.from({ length: cfg.urinals }, () => ({ kind: 'free' }));

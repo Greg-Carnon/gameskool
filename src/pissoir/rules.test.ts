@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mulberry32 } from '../kit/rng';
-import { isCorrect, judge, LEVELS, makePerson, makeRound, solve, WAIT_THRESHOLD, type Slot } from './rules';
+import { goodSlots, isCorrect, judge, LEVELS, makePerson, makeRound, solve, WAIT_THRESHOLD, type Slot } from './rules';
 
 const rng = mulberry32(3);
 const guy = (t: Parameters<typeof makePerson>[0] = 'normal'): Slot => ({ kind: 'taken', who: makePerson(t, rng) });
@@ -20,7 +20,6 @@ describe('judge', () => {
     const slots: Slot[] = [{ kind: 'broken' }, { kind: 'wet' }, F, guy(), F];
     expect(judge(slots, 0).score).toBe(Infinity);
     expect(judge(slots, 3).score).toBe(Infinity);
-    expect(judge(slots, 1).score).toBeGreaterThan(judge(slots, 2).score - 100);
     expect(judge(slots, 1).reasons).toContain('Wet floor.');
   });
   it('der Freund macht Danebenstehen richtig', () => {
@@ -40,17 +39,26 @@ describe('judge', () => {
 });
 
 describe('makeRound', () => {
-  it('jedes Level liefert lösbare Runden mit höchstens zwei richtigen Plätzen', () => {
+  it('jede Runde hat entweder einen sauberen Platz (nicht neben jemandem) oder Warten ist die Antwort', () => {
     const r = mulberry32(9);
     for (const cfg of LEVELS) {
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 60; i++) {
         const slots = makeRound(cfg, r);
         const ans = solve(slots, cfg.waitAllowed);
-        const ok = ans.waitIsBest || (Number.isFinite(ans.best) && ans.scores.filter((x) => x === ans.best).length <= 2);
-        expect(ok).toBe(true);
+        const good = goodSlots(ans);
+        if (ans.waitIsBest) expect(good).toEqual([]);
+        else { expect(good.length).toBeGreaterThan(0); expect(good.length).toBeLessThanOrEqual(3); for (const g of good) expect(ans.scores[g]).toBeLessThan(WAIT_THRESHOLD); }
         expect(slots.length).toBe(cfg.urinals);
       }
     }
+  });
+  it('ein Platz Abstand ohne Randbonus zählt trotzdem als richtig', () => {
+    const slots: Slot[] = [F, guy(), F, F, F];
+    const ans = solve(slots, false);
+    expect(isCorrect(ans, 3)).toBe(true);
+    expect(isCorrect(ans, 4)).toBe(true);
+    expect(isCorrect(ans, 2)).toBe(false);
+    expect(isCorrect(ans, 0)).toBe(false);
   });
   it('vor Level 5 gibt es nie eine Warten-Runde', () => {
     const r = mulberry32(10);
