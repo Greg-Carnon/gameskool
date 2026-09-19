@@ -126,3 +126,8 @@ Damit man das nicht raten muss:
 - Knopf heißt "Wait outside". Startscreen nennt die Warten-Regel. Im Nachzügler-Moment steht "STAY" mit pulsierendem Ring unter der eigenen Figur.
 
 **Raum neu.** Boden bei 520 statt 560, Pissoirs 118 hoch auf Hüfthöhe mit Abfluss und Rohr zum Boden, Spülkasten oben, Figuren 10 Prozent größer, Spiegel und Plakate auf Augenhöhe, Farbband höher, Deckenlampe mit Lichtkegel bis zum Boden, Boden mit Fluchtpunkt und Wandschatten, Abfluss in der Mitte, Tür in voller Höhe mit Kassetten und Rahmen, nasse Stellen mit gelbem Warnschild, Requisite oben rechts über der Kabine.
+
+## Runde sieben, 19. September
+
+- **Game Over mit Wahl**: "Retry level N" startet das aktuelle Level neu, Punkte und Perks bleiben, Strikes und Streak sind zurückgesetzt. "Start from the top" beginnt bei Level 1 mit null. Im Daily Run ist der Retry-Seed pro Level fest, damit alle dieselben Räume behalten.
+- **Untere Leiste ohne Überlappung**: Erscheinen die Spiegel-Knöpfe, verschwinden Wait, Stall und das Fragezeichen. Sind Wait und Stall beide da, rückt das Fragezeichen nach oben. Beim Handtrockner, im Level-Screen und im Game Over ist es weg.
