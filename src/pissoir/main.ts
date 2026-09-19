@@ -227,7 +227,7 @@ bindPointer(view, {
     if (y < URINAL_Y - 90 || y > FLOOR_Y + 60) return;
     const n = slots.length;
     const w = slotW(n);
-    for (let i = 0; i < n; i++) if (Math.abs(x - slotX(n, i)) < Math.max(w / 2 + 8, (W - 48) / n / 2)) { choose(i); return; }
+    for (let i = 0; i < n; i++) if (Math.abs(x - slotX(n, i)) < Math.max(w / 2 + 8, (W - 110) / n / 2)) { choose(i); return; }
   },
 });
 waitBtn.addEventListener('click', () => { unlockAudio(); choose('wait'); });

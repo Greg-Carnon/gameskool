@@ -4,7 +4,7 @@ import type { Person, Slot } from './rules';
 
 export const FLOOR_Y = 560;
 export const URINAL_Y = 330;
-export const DOOR_X = 40;
+export const DOOR_X = 0;
 
 export interface Scene {
   slots: Slot[];
@@ -20,14 +20,14 @@ export interface Scene {
   t: number;
 }
 
+const LEFT = 96, RIGHT = 14;
 export function slotX(n: number, i: number): number {
-  const margin = 24;
-  const span = W - margin * 2;
-  return margin + (span / n) * (i + 0.5);
+  const span = W - LEFT - RIGHT;
+  return LEFT + (span / n) * (i + 0.5);
 }
 
 export function slotW(n: number): number {
-  return Math.min(56, ((W - 48) / n) * 0.72);
+  return Math.min(52, ((W - LEFT - RIGHT) / n) * 0.74);
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
@@ -61,15 +61,15 @@ function drawRoom(ctx: CanvasRenderingContext2D, t: number): void {
   ctx.fillRect(0, FLOOR_Y - 6, W, 6);
   // Tür links
   ctx.fillStyle = '#8a6a4a';
-  roundRect(ctx, 6, 200, 68, 360, 4); ctx.fill();
+  roundRect(ctx, 4, 200, 62, 360, 4); ctx.fill();
   ctx.fillStyle = '#6f5238';
-  roundRect(ctx, 14, 212, 52, 336, 3); ctx.fill();
+  roundRect(ctx, 11, 212, 48, 336, 3); ctx.fill();
   ctx.fillStyle = '#d9c9a6';
-  ctx.beginPath(); ctx.arc(58, 390, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(52, 390, 5, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#4a3a2a';
   ctx.font = '800 9px Inter, system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('EXIT', 40, 232);
+  ctx.fillText('EXIT', 35, 232);
 }
 
 function drawUrinal(ctx: CanvasRenderingContext2D, x: number, w: number, slot: Slot, highlight: number, t: number): void {
