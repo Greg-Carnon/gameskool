@@ -117,6 +117,7 @@ function startRound(): void {
   waitBtn.hidden = !level.waitAllowed;
   stallBtn.hidden = !level.stalls;
   mirrorBox.hidden = true;
+  syncBottom();
   sfx.play('door', 0.05, 0.5);
 }
 
@@ -151,6 +152,7 @@ function startLevel(i: number): void {
   renderShop();
   phase = 'levelup';
   levelEl.hidden = false;
+  syncBottom();
 }
 
 function renderShop(): void {
@@ -297,12 +299,14 @@ function startMirror(): boolean {
   phase = 'mirror';
   $('mirrorLook').textContent = m.wantsNod ? '🙂 Nod back' : '👀 Look back';
   mirrorBox.hidden = false;
+  syncBottom();
   return true;
 }
 
 function mirrorAnswer(choice: 'wall' | 'look'): void {
   if (!sc.mirror || sc.mirror.done) return;
   mirrorBox.hidden = true;
+  syncBottom();
   const ok = sc.mirror.wantsNod ? choice === 'look' : choice === 'wall';
   sc.mirror.done = true; sc.mirror.answered = choice;
   phase = 'reacting'; sc.reactT = 0;
@@ -318,7 +322,7 @@ function mirrorAnswer(choice: 'wall' | 'look'): void {
 }
 
 // ---------- Handtrockner ----------
-function startDryer(): void { phase = 'dryer'; sc.dryer = { t: 0, hit: null }; waitBtn.hidden = true; stallBtn.hidden = true; }
+function startDryer(): void { phase = 'dryer'; sc.dryer = { t: 0, hit: null }; waitBtn.hidden = true; stallBtn.hidden = true; syncBottom(); }
 function dryerTap(): void {
   if (!sc.dryer || sc.dryer.hit !== null) return;
   const k = dryerPos(sc.dryer.t);
@@ -383,6 +387,7 @@ function nextRound(ok: boolean): void {
 function gameOver(reason: string): void {
   phase = 'over';
   mirrorBox.hidden = true;
+  syncBottom();
   sfx.play('over');
   samples.stopLoop(1.5);
   meta.games++;
@@ -393,17 +398,30 @@ function gameOver(reason: string): void {
   $('finalReason').textContent = reason || 'Three awkward moments. Everyone remembers.';
   $('finalStats').textContent = `${rounds} rounds · level ${levelIndex + 1} · best streak ${bestStreak}${daily ? ' · daily run' : ''}`;
   $('finalBest').textContent = score >= meta.best ? 'New record!' : `Record: ${meta.best}`;
+  $('retryBtn').textContent = `Retry level ${levelIndex + 1}`;
+  $('retryBtn').hidden = levelIndex === 0;
   overEl.hidden = false;
   void loadBoard(score);
 }
 
-function startGame(isDaily: boolean): void {
+function startGame(isDaily: boolean, fromLevel = 0): void {
   daily = isDaily;
-  rng = mulberry32(isDaily ? dailySeed() : ((Date.now() >>> 0) || 1));
-  score = 0; streak = 0; bestStreak = 0; strikes = 0; rounds = 0; awkward = 0; powers = [];
+  rng = mulberry32(isDaily ? dailySeed() + fromLevel : ((Date.now() >>> 0) || 1));
+  if (fromLevel === 0) { score = 0; streak = 0; bestStreak = 0; rounds = 0; awkward = 0; powers = []; }
+  else { streak = 0; }
+  strikes = 0;
   startEl.hidden = true; overEl.hidden = true;
+  mirrorBox.hidden = true;
   syncPowers(); syncHud();
-  startLevel(0);
+  startLevel(fromLevel);
+}
+
+/** Untere Leiste: Fragezeichen weicht den Wahl-Knöpfen, Wait und Stall rücken zusammen. */
+function syncBottom(): void {
+  const help = $('helpBtn');
+  help.hidden = !mirrorBox.hidden || phase === 'dryer' || phase === 'over' || phase === 'levelup';
+  document.body.classList.toggle('two-btns', !waitBtn.hidden && !stallBtn.hidden);
+  document.body.classList.toggle('mirror-open', !mirrorBox.hidden);
 }
 
 function syncHud(): void {
@@ -482,7 +500,8 @@ $('mirrorWall').addEventListener('click', () => { unlockAudio(); mirrorAnswer('w
 $('mirrorLook').addEventListener('click', () => { unlockAudio(); mirrorAnswer('look'); });
 $('startBtn').addEventListener('click', () => { unlockAudio(); startGame(false); });
 $('dailyBtn').addEventListener('click', () => { unlockAudio(); startGame(true); });
-$('againBtn').addEventListener('click', () => { unlockAudio(); startGame(daily); });
+$('againBtn').addEventListener('click', () => { unlockAudio(); startGame(daily, 0); });
+$('retryBtn').addEventListener('click', () => { unlockAudio(); startGame(daily, levelIndex); });
 $('menuBtn').addEventListener('click', () => { overEl.hidden = true; renderStart(); startEl.hidden = false; });
 $('lvGo').addEventListener('click', () => { unlockAudio(); levelEl.hidden = true; startRound(); });
 $('helpBtn').addEventListener('click', () => { const p = $('helpPanel'); p.hidden = !p.hidden; });

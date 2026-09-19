@@ -52,6 +52,10 @@
     .rule span:first-child { font-size: 20px; }
     #stallBtn { position: fixed; right: 12px; bottom: max(14px, env(safe-area-inset-bottom)); margin: 0; background: #fff; color: var(--ink); box-shadow: 0 5px 0 #c9d6da; font-size: 16px; padding: 12px 22px; z-index: 6; }
     #stallBtn[hidden] { display: none; }
+    #helpBtn[hidden] { display: none; }
+    body.two-btns #helpBtn { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 62px); }
+    .mirrorbox { z-index: 9; }
+    body.mirror-open #waitBtn, body.mirror-open #stallBtn, body.mirror-open #helpBtn { display: none; }
     .achtoast { position: fixed; left: 50%; bottom: 90px; transform: translate(-50%, 10px); background: var(--yellow); color: var(--ink); font-weight: 800; font-size: 13px; padding: 8px 14px; border-radius: 999px; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; z-index: 8; white-space: nowrap; }
     .achtoast.show { opacity: 1; transform: translate(-50%, 0); }
     .achs { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin: 10px 0 4px; }
@@ -151,7 +155,8 @@
         <div id="boardList"></div>
         <div id="boardSubmit" hidden style="margin-top:8px"><input id="boardName" maxlength="14" placeholder="your name"><button id="boardBtn">Post</button></div>
       </div>
-      <button id="againBtn">Try again</button>
+      <button id="retryBtn">Retry level</button>
+      <button id="againBtn" class="secondary" style="text-align:center">Start from the top</button>
       <div><button id="menuBtn" class="secondary" style="display:inline-block;width:auto">Menu</button><button id="shareBtn" class="secondary" style="display:inline-block;width:auto">Share</button></div>
     </div>
   </div>
