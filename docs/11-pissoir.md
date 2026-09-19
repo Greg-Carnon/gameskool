@@ -115,3 +115,14 @@ Auswahl nach Namen, Dauer und Pegel, nicht per Ohr. Wenn ein Clip nicht passt, a
 7. **Plakate** zwischen den Rohren, zwei bis drei pro Level, deterministisch: Divorce hotline, New Year New You (it is September), Missing: my dignity, AI SLOP INC. Certainly!, Dr. Bladder, Quiz night 2 for 1 shame, HODL your breath, Wanted: guy who talks at urinals, Learn German in 3 days "Pissoir", Hand dryer repair since 1998.
 
 81 Tests. Achievements 14.
+
+## Runde sechs, 19. September: Regel-Klarheit und Raum
+
+**Gregs Frage: nur noch ein Platz frei, direkt neben jemandem, was tun?** Antwort im Spiel: Wait, unten links. Ab Level 6 Stall, unten rechts, wenn die Kabine frei ist. Auf sich selbst tippt man nur im Nachzügler-Moment. In Level 1 bis 4 gibt es immer einen sauberen Platz, dort muss man nie warten.
+
+Damit man das nicht raten muss:
+- **Erzwungene Lernrunde**: Die erste Runde von "Wait For It" ist garantiert eine Warten-Runde, die erste von "The Friend" garantiert eine Kabinen-Runde. Ein Hinweisfeld unter dem Boden erklärt es in zwei Zeilen, ein gelber Pfeil hüpft über dem richtigen Knopf, die Blase läuft 2,5-mal langsamer.
+- **Hilfe-Knopf "?"** unten mittig, immer erreichbar: die sieben Regeln mit Icon in einem Satz.
+- Knopf heißt "Wait outside". Startscreen nennt die Warten-Regel. Im Nachzügler-Moment steht "STAY" mit pulsierendem Ring unter der eigenen Figur.
+
+**Raum neu.** Boden bei 520 statt 560, Pissoirs 118 hoch auf Hüfthöhe mit Abfluss und Rohr zum Boden, Spülkasten oben, Figuren 10 Prozent größer, Spiegel und Plakate auf Augenhöhe, Farbband höher, Deckenlampe mit Lichtkegel bis zum Boden, Boden mit Fluchtpunkt und Wandschatten, Abfluss in der Mitte, Tür in voller Höhe mit Kassetten und Rahmen, nasse Stellen mit gelbem Warnschild, Requisite oben rechts über der Kabine.
