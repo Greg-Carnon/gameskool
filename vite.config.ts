@@ -12,6 +12,7 @@ export default defineConfig({
         zeitfinger: 'zeitfinger/index.html',
         sonar: 'sonar/index.html',
         dungeon: 'dungeon-deal/index.html',
+        pissoir: 'pissoir/index.html',
       },
     },
   },

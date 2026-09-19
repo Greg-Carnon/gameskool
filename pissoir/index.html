@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#dfe9ec">
+  <meta property="og:title" content="Pissoir">
+  <meta property="og:description" content="Pick the right urinal. Don't be weird.">
+  <title>Pissoir</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink:#1a2a30; --paper:#ffffff; --tile:#dfe9ec; --green:#5cf2a0; --red:#ff5e5e; --yellow:#ffd23f; }
+    html, body { margin: 0; height: 100%; background: var(--tile); overflow: hidden; overscroll-behavior: none; }
+    body { font-family: Inter, system-ui, sans-serif; color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+    canvas { display: block; position: fixed; inset: 0; }
+    .overlay { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; background: rgba(26, 42, 48, 0.55); padding: 20px; z-index: 10; }
+    .overlay[hidden] { display: none; }
+    .card { max-width: 340px; width: 100%; background: var(--paper); border-radius: 22px; padding: 26px 22px; box-shadow: 0 12px 0 rgba(26,42,48,0.35); }
+    h1 { font-family: 'Archivo Black', Inter, sans-serif; font-size: 44px; margin: 0; line-height: 1; letter-spacing: -0.02em; text-transform: uppercase; }
+    h1 span { color: #7fb3bf; }
+    .tag { font-family: Caveat, cursive; font-size: 24px; color: #7fb3bf; margin: 4px 0 8px; transform: rotate(-2deg); }
+    p { margin: 8px 0; font-size: 15px; line-height: 1.45; }
+    p b { color: #1f7a5a; }
+    .sub { font-size: 13px; opacity: 0.6; }
+    .big { font-family: 'Archivo Black', Inter, sans-serif; font-size: 60px; line-height: 1; margin: 6px 0; }
+    .reason { color: #c0392b; font-weight: 700; }
+    button { margin-top: 14px; font: inherit; font-weight: 800; font-size: 20px; padding: 14px 36px; border-radius: 999px; border: 0; background: var(--ink); color: #fff; box-shadow: 0 6px 0 #0c161a; }
+    button:active { transform: translateY(4px); box-shadow: 0 2px 0 #0c161a; }
+    button.secondary { display: block; width: 100%; text-align: left; background: #eef4f6; color: var(--ink); box-shadow: 0 4px 0 #c9d6da; font-size: 15px; padding: 12px 16px; margin-top: 10px; }
+    button.secondary b { display: block; font-size: 16px; }
+    button.secondary small { display: block; font-weight: 500; opacity: 0.7; }
+    .hud { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; align-items: center; gap: 10px; pointer-events: none; z-index: 5; }
+    .pill { background: var(--ink); color: #fff; border-radius: 999px; padding: 6px 12px; font-weight: 800; font-size: 15px; white-space: nowrap; }
+    .pill.lv { font-size: 12px; opacity: 0.9; flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; }
+    .pill.streak { background: var(--yellow); color: var(--ink); }
+    .pill.streak:empty { display: none; }
+    .pill.strikes { background: var(--red); letter-spacing: 3px; }
+    .bar { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 40px); left: 12px; right: 12px; height: 12px; border-radius: 999px; background: rgba(26,42,48,0.2); overflow: hidden; z-index: 5; }
+    .bar div { height: 100%; width: 100%; background: var(--green); border-radius: 999px; transition: background .3s; }
+    .barlbl { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 54px); left: 12px; font-size: 10px; font-weight: 800; letter-spacing: 0.2em; opacity: 0.6; z-index: 5; }
+    .powers { position: fixed; right: 12px; top: calc(max(10px, env(safe-area-inset-top)) + 70px); display: flex; flex-direction: column; gap: 8px; z-index: 6; }
+    .powers .pw { margin: 0; width: 44px; height: 44px; padding: 0; border-radius: 12px; font-size: 20px; background: #fff; box-shadow: 0 4px 0 #c9d6da; }
+    #waitBtn { position: fixed; left: 12px; bottom: max(14px, env(safe-area-inset-bottom)); margin: 0; background: #fff; color: var(--ink); box-shadow: 0 5px 0 #c9d6da; font-size: 16px; padding: 12px 22px; z-index: 6; }
+    #waitBtn[hidden] { display: none; }
+    .lvbox .card { text-align: left; }
+    .lvbox h2 { font-family: 'Archivo Black', Inter, sans-serif; font-size: 28px; margin: 0; text-transform: uppercase; }
+    .lvbox .lvl { font-size: 12px; letter-spacing: 0.2em; opacity: 0.6; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud"><span class="pill" id="score">0</span><span class="pill lv" id="level"></span><span class="pill streak" id="streak"></span><span class="pill strikes" id="strikes">●●●</span></div>
+  <div class="bar"><div id="bladder"></div></div>
+  <div class="barlbl">BLADDER</div>
+  <div class="powers" id="powers"></div>
+  <button id="waitBtn" hidden>🚪 Wait</button>
+
+  <div id="start" class="overlay">
+    <div class="card">
+      <h1>Piss<span>oir</span></h1>
+      <p class="tag">Don't be weird.</p>
+      <p>Everyone knows the code. Keep your distance. Never next to a guy.</p>
+      <p><b>Tap the right urinal</b> before your bladder gives up. Three awkward moments and you are done.</p>
+      <p class="sub" id="bestLine"></p>
+      <button id="startBtn">GO</button>
+    </div>
+  </div>
+  <div id="levelup" class="overlay lvbox" hidden>
+    <div class="card">
+      <div class="lvl">NEXT UP</div>
+      <h2 id="lvName"></h2>
+      <p id="lvIntro"></p>
+      <p class="sub" id="lvPick">Pick a perk:</p>
+      <div id="lvPowers"></div>
+      <button id="lvGo">Let's go</button>
+    </div>
+  </div>
+  <div id="over" class="overlay" hidden>
+    <div class="card">
+      <p>Everyone remembers.</p>
+      <div class="big" id="finalScore">0</div>
+      <p class="reason" id="finalReason"></p>
+      <p class="sub" id="finalStats"></p>
+      <p id="finalBest"></p>
+      <button id="againBtn">Try again</button>
+    </div>
+  </div>
+  <script type="module" src="/src/pissoir/main.ts"></script>
+</body>
+</html>
