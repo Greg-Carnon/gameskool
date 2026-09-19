@@ -39,3 +39,13 @@ Gekachelter Waschraum mit flackernder Neonröhre, Tür links, Pissoirs aus Verl�
 ## Offen nach Gregs Test
 
 Fühlt sich der Wert fair an, oder sind einzelne Regeln unklar? Ist die Blase in Level 1 zu langsam? Braucht Rush Hour mehr Varianz (Spiegel, Waschbecken, Leute kommen nach)? Ideen, die ich zurückgehalten habe: Blickkontakt über den Spiegel, jemand kommt nach dir rein und stellt sich falsch, Handtrockner-Timing als Bonusrunde.
+
+## Runde zwei, 19. September
+
+Gregs Feedback: Sounds katastrophal, keine Arme, eigene Figur komisch und nicht Jack, Räume pro Level unterschiedlich, Gesichter der anderen wirken umgedreht.
+
+- **Blickrichtung:** Alle am Pissoir stehen jetzt mit dem Rücken zu uns (Hinterkopf, Ohren, Rückenfalte). Bei einer Reaktion drehen sie nur den Kopf ins Profil zum Spieler: ein Auge, Nase, hochgezogene Braue, Mund je nach Charakter. Der Spieler steht an der Tür und beim Laufen von vorn, am Pissoir von hinten.
+- **Arme:** Ärmel in dunklerem Hemdton neben dem Rumpf, Ellbogen als Hautpunkt. Von vorn hängen die Arme mit Händen und schwingen beim Gehen. Winken und Handy bleiben.
+- **Spieler:** generischer Typ, braune Haare, blaues Hemd mit hellem Streifen. Kein Jack.
+- **Räume** (`src/pissoir/themes.ts`), pro Level: Office (Waschbecken), Pub (Quiz-Poster, warmes Licht), Gas station (Graffiti "WASH YOUR HANDS"), Club (dunkel, pinkes Neon, Flackern), Stadium (Snackautomat), Airport (Pflanze), School (Kreidetafel mit der Regel), Festival (Dixi-Plane statt Kacheln). Kachelgröße, Fugen, Boden, Tür, Licht und Pissoir-Tint pro Thema. Der Level-Screen nennt den Ort.
+- **Sounds:** alle neu und leiser. Schritte als weiches Rauschen, richtig als Dreieck-Glöckchen mit Sprung nach oben, falsch als dumpfes Wah mit Vibrato statt Sägezahn, Level als kleiner Zweiklang, Spülung als abfallendes Rauschen über eine Sekunde. **Nicht per Ohr geprüft, Playwright hat keinen Lautsprecher.** Wenn etwas noch stört, bitte den konkreten Sound nennen.
