@@ -45,6 +45,22 @@
     .powers .pw { margin: 0; width: 44px; height: 44px; padding: 0; border-radius: 12px; font-size: 20px; background: #fff; box-shadow: 0 4px 0 #c9d6da; }
     #waitBtn { position: fixed; left: 12px; bottom: max(14px, env(safe-area-inset-bottom)); margin: 0; background: #fff; color: var(--ink); box-shadow: 0 5px 0 #c9d6da; font-size: 16px; padding: 12px 22px; z-index: 6; }
     #waitBtn[hidden] { display: none; }
+    #stallBtn { position: fixed; right: 12px; bottom: max(14px, env(safe-area-inset-bottom)); margin: 0; background: #fff; color: var(--ink); box-shadow: 0 5px 0 #c9d6da; font-size: 16px; padding: 12px 22px; z-index: 6; }
+    #stallBtn[hidden] { display: none; }
+    .achtoast { position: fixed; left: 50%; bottom: 90px; transform: translate(-50%, 10px); background: var(--yellow); color: var(--ink); font-weight: 800; font-size: 13px; padding: 8px 14px; border-radius: 999px; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; z-index: 8; white-space: nowrap; }
+    .achtoast.show { opacity: 1; transform: translate(-50%, 0); }
+    .achs { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin: 10px 0 4px; }
+    .ach { font-size: 18px; filter: grayscale(1); opacity: 0.25; }
+    .ach.on { filter: none; opacity: 1; }
+    .story { font-family: Caveat, cursive; font-size: 20px; color: #4a5a60; margin: 2px 0 8px; }
+    .board { text-align: left; background: #eef4f6; border-radius: 14px; padding: 10px 12px; margin-top: 12px; }
+    .board[hidden] { display: none; }
+    .board h3 { font-size: 11px; letter-spacing: 0.2em; margin: 0 0 6px; opacity: 0.7; }
+    .board .row { display: grid; grid-template-columns: 30px 1fr 60px; font-size: 13px; padding: 2px 0; }
+    .board .row span:last-child { text-align: right; font-weight: 800; }
+    .board input { font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 8px; border: 1px solid #c9d6da; width: 120px; }
+    .board button { margin: 0 0 0 6px; font-size: 14px; padding: 8px 14px; }
+    .tokens { font-size: 13px; color: #1f7a5a; font-weight: 700; }
     .lvbox .card { text-align: left; }
     .lvbox h2 { font-family: 'Archivo Black', Inter, sans-serif; font-size: 28px; margin: 0; text-transform: uppercase; }
     .lvbox .lvl { font-size: 12px; letter-spacing: 0.2em; opacity: 0.6; font-weight: 800; }
@@ -57,6 +73,8 @@
   <div class="barlbl">BLADDER</div>
   <div class="powers" id="powers"></div>
   <button id="waitBtn" hidden>🚪 Wait</button>
+  <button id="stallBtn" hidden>🚽 Stall</button>
+  <div class="achtoast" id="achToast"></div>
 
   <div id="start" class="overlay">
     <div class="card">
@@ -65,13 +83,17 @@
       <p>Everyone knows the code. Keep your distance. Never next to a guy.</p>
       <p><b>Tap the right urinal</b> before your bladder gives up. Three awkward moments and you are done.</p>
       <p class="sub" id="bestLine"></p>
+      <p class="tokens" id="tokens"></p>
+      <div class="achs" id="achs"></div>
       <button id="startBtn">GO</button>
+      <div><button id="dailyBtn" class="secondary" style="text-align:center">📅 <b style="display:inline">Daily run</b> <small id="dailyLine"></small></button></div>
     </div>
   </div>
   <div id="levelup" class="overlay lvbox" hidden>
     <div class="card">
       <div class="lvl" id="lvPlace">NEXT UP</div>
       <h2 id="lvName"></h2>
+      <p class="story" id="lvStory"></p>
       <p id="lvIntro"></p>
       <p class="sub" id="lvPick">Pick a perk:</p>
       <div id="lvPowers"></div>
@@ -85,7 +107,13 @@
       <p class="reason" id="finalReason"></p>
       <p class="sub" id="finalStats"></p>
       <p id="finalBest"></p>
+      <div class="board" id="board" hidden>
+        <h3>THIS WEEK</h3>
+        <div id="boardList"></div>
+        <div id="boardSubmit" hidden style="margin-top:8px"><input id="boardName" maxlength="14" placeholder="your name"><button id="boardBtn">Post</button></div>
+      </div>
       <button id="againBtn">Try again</button>
+      <div><button id="menuBtn" class="secondary" style="display:inline-block;width:auto">Menu</button><button id="shareBtn" class="secondary" style="display:inline-block;width:auto">Share</button></div>
     </div>
   </div>
   <script type="module" src="/src/pissoir/main.ts"></script>

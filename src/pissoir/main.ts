@@ -4,14 +4,14 @@ import { vibrate } from '../kit/haptics';
 import { bindPointer } from '../kit/input';
 import { startLoop } from '../kit/loop';
 import { Particles } from '../kit/particles';
-import { mulberry32 } from '../kit/rng';
-import { unlockAudio } from '../kit/sfx';
+import { dailySeed, mulberry32 } from '../kit/rng';
 import { createSamples } from '../kit/samples';
+import { unlockAudio } from '../kit/sfx';
 import { Shake } from '../kit/shake';
-import { load, save } from '../kit/storage';
-import { DOOR_X, FLOOR_Y, render, slotW, slotX, URINAL_Y, type Scene } from './render';
-import { goodSlots, isCorrect, judge, levelAt, makeRound, solve, TRAIT_INFO, type Answer, type LevelConfig, type Slot } from './rules';
-import { themeAt } from './themes';
+import { ACHIEVEMENTS, bump, loadMeta, saveMeta, unlock, type PMeta } from './achievements';
+import { DOOR_X, DRYER, dryerPos, FLOOR_Y, render, slotW, slotX, STALL, URINAL_Y, type Scene } from './render';
+import { addLatecomer, goodSlots, isCorrect, isMoveCorrect, judge, levelAt, makeRound, solve, solveMove, TRAIT_INFO, type Answer, type Choice, type LevelConfig, type MoveAnswer, type Slot } from './rules';
+import { themeAt, THEMES } from './themes';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('c');
@@ -19,23 +19,22 @@ const view = createView(canvas);
 const particles = new Particles(200);
 const floats = new FloatText(12);
 const shake = new Shake(8, 3);
+
 const samples = createSamples('/audio/pissoir');
 samples.preload(['step', 'zip', 'flush', 'good', 'bad', 'bad2', 'over', 'level', 'power', 'tick', 'door', 'applause', 'bells']);
 const AMB: Record<string, string> = { Office: 'office', Pub: 'pub', 'Gas station': 'gas', Club: 'club', Stadium: 'stadium', Airport: 'airport', School: 'school', Festival: 'festival' };
+const VOL: Record<string, { n: string; v: number }> = {
+  step: { n: 'step', v: 0.5 }, good: { n: 'good', v: 0.8 }, level: { n: 'level', v: 0.8 }, over: { n: 'over', v: 0.8 }, power: { n: 'power', v: 0.7 },
+  tick: { n: 'tick', v: 0.4 }, flush: { n: 'flush', v: 0.7 }, zip: { n: 'zip', v: 0.6 }, door: { n: 'door', v: 0.6 }, applause: { n: 'applause', v: 0.7 }, bells: { n: 'bells', v: 0.7 },
+};
 const sfx = {
   play(name: string, jitter = 0.04, vol = 1): void {
-    const map: Record<string, { n: string; v: number }> = {
-      step: { n: 'step', v: 0.5 }, good: { n: 'good', v: 0.8 }, bad: { n: Math.random() < 0.5 ? 'bad' : 'bad2', v: 0.8 }, level: { n: 'level', v: 0.8 },
-      over: { n: 'over', v: 0.8 }, power: { n: 'power', v: 0.7 }, tick: { n: 'tick', v: 0.4 }, flush: { n: 'flush', v: 0.7 }, zip: { n: 'zip', v: 0.6 }, door: { n: 'door', v: 0.6 }, applause: { n: 'applause', v: 0.7 }, bells: { n: 'bells', v: 0.7 },
-    };
-    const m = map[name]; if (!m) return;
-    samples.play(m.n, { vol: m.v * vol, jitter });
+    const m = name === 'bad' ? { n: Math.random() < 0.5 ? 'bad' : 'bad2', v: 0.8 } : VOL[name];
+    if (m) samples.play(m.n, { vol: m.v * vol, jitter });
   },
 };
 
-interface Meta { best: number; bestLevel: number; games: number; milestones: number[] }
-const META_KEY = 'pissoir-meta';
-let meta = load<Meta>(META_KEY, { best: 0, bestLevel: 0, games: 0, milestones: [] });
+let meta: PMeta = loadMeta();
 
 type Power = 'steel' | 'skip' | 'second';
 const POWER_INFO: Record<Power, { name: string; desc: string; icon: string }> = {
@@ -46,65 +45,84 @@ const POWER_INFO: Record<Power, { name: string; desc: string; icon: string }> = 
 const MILESTONES = [5, 10, 20, 35, 50, 75, 100];
 
 let rng = mulberry32(1);
+let daily = false;
 let levelIndex = 0;
 let level: LevelConfig = levelAt(0);
 let round = 0;
 let slots: Slot[] = [];
-let answer: Answer = { best: 0, waitIsBest: false, scores: [] };
-let bladder = 0;
-let bladderMax = 7;
-let score = 0;
-let streak = 0;
-let bestStreak = 0;
-let strikes = 0;
-let rounds = 0;
-let phase: 'idle' | 'choosing' | 'reacting' | 'levelup' | 'over' = 'idle';
+let answer: Answer = { best: 0, waitIsBest: false, stallFree: false, scores: [] };
+let moveAnswer: MoveAnswer | null = null;
+let playerSlot = -1;
+let bladder = 0, bladderMax = 7;
+let score = 0, streak = 0, bestStreak = 0, strikes = 0, rounds = 0, awkward = 0;
+let levelStrikes = 0;
+let phase: 'idle' | 'choosing' | 'reacting' | 'moving' | 'mirror' | 'dryer' | 'levelup' | 'over' = 'idle';
 let powers: Power[] = [];
 let steelActive = false;
 let tickAcc = 0;
-const sc: Scene = { slots: [], playerX: DOOR_X + 40, playerTarget: null, playerT: 0, playerState: 'door', reactT: 0, reactKind: 'none', reactSlot: -1, bubble: null, hover: -1, t: 0, theme: themeAt(0), good: [] };
+const sc: Scene = { slots: [], playerX: DOOR_X + 40, playerTarget: null, playerT: 0, playerState: 'door', reactT: 0, reactKind: 'none', reactSlot: -1, bubble: null, hover: -1, t: 0, theme: themeAt(0), good: [], stallFree: false, showStall: false, late: null, mirror: null, dryer: null, moveMode: false };
 
-const startEl = $('start'), overEl = $('over'), levelEl = $('levelup'), hud = { score: $('score'), streak: $('streak'), strikes: $('strikes'), level: $('level'), bladder: $('bladder'), powers: $('powers') };
-const waitBtn = $<HTMLButtonElement>('waitBtn');
+const startEl = $('start'), overEl = $('over'), levelEl = $('levelup');
+const hud = { score: $('score'), streak: $('streak'), strikes: $('strikes'), level: $('level'), bladder: $('bladder'), powers: $('powers') };
+const waitBtn = $<HTMLButtonElement>('waitBtn'), stallBtn = $<HTMLButtonElement>('stallBtn');
 
 function multiplier(): number { return 1 + Math.floor(streak / 3); }
+function themeFor(i: number) { const cfg = levelAt(i); return THEMES.find((t) => t.name === cfg.place) ?? themeAt(i); }
+function award(id: string): void { const a = unlock(meta, id); if (a) toastAch(a.icon, a.name); }
+function count(counter: string, id: string, needed: number): void { const a = bump(meta, counter, id, needed); if (a) toastAch(a.icon, a.name); }
+function toastAch(icon: string, name: string): void {
+  const el = $('achToast'); el.textContent = `${icon} ${name}`; el.classList.add('show');
+  sfx.play('bells', 0.02, 0.6);
+  setTimeout(() => el.classList.remove('show'), 2400);
+}
 
+// ---------- Runden ----------
 function startRound(): void {
-  slots = makeRound(level, rng);
-  answer = solve(slots, level.waitAllowed);
-  sc.slots = slots;
+  const r = makeRound(level, rng);
+  slots = r.slots;
+  answer = solve(slots, level.waitAllowed, r.stallFree);
+  moveAnswer = null; playerSlot = -1;
+  sc.slots = slots; sc.stallFree = r.stallFree; sc.showStall = level.stalls;
   sc.playerX = DOOR_X + 40; sc.playerTarget = null; sc.playerT = 0; sc.playerState = 'door';
-  sc.reactKind = 'none'; sc.reactT = 0; sc.bubble = null;
+  sc.reactKind = 'none'; sc.reactT = 0; sc.bubble = null; sc.good = []; sc.late = null; sc.mirror = null; sc.moveMode = false;
   bladderMax = level.bladder * (steelActive ? 2 : 1);
   bladder = bladderMax;
   phase = 'choosing';
-  sc.good = [];
   waitBtn.hidden = !level.waitAllowed;
+  stallBtn.hidden = !level.stalls;
   sfx.play('door', 0.05, 0.5);
 }
 
 function startLevel(i: number): void {
-  levelIndex = i; level = levelAt(i); round = 0; steelActive = false;
-  sc.theme = themeAt(i);
+  levelIndex = i; level = levelAt(i); round = 0; steelActive = false; levelStrikes = 0;
+  sc.theme = themeFor(i);
   document.body.style.background = sc.theme.wall;
   samples.loop(`amb-${AMB[sc.theme.name] ?? 'office'}`, 0.9);
   hud.level.textContent = `L${i + 1} · ${level.name}`;
+  $('lvPlace').textContent = `${level.time} · ${level.place}`;
   $('lvName').textContent = level.name;
-  $('lvPlace').textContent = `${sc.theme.name} restroom`;
+  $('lvStory').textContent = level.story;
   $('lvIntro').textContent = level.intro;
-  const offer = (['steel', 'skip', 'second'] as Power[]).filter(() => true).sort(() => rng() - 0.5).slice(0, 2);
   const box = $('lvPowers');
   box.innerHTML = '';
-  if (i > 0) {
+  const picks = i > 0 ? 1 + (meta.tokens > 0 ? 1 : 0) : 0;
+  $('lvPick').textContent = picks === 2 ? 'Dry hands: pick two perks' : picks === 1 ? 'Pick a perk:' : '';
+  if (picks > 0) {
+    let left = picks;
+    if (meta.tokens > 0) { meta.tokens--; saveMeta(meta); }
+    const offer = (['steel', 'skip', 'second'] as Power[]).sort(() => rng() - 0.5);
     for (const p of offer) {
       const b = document.createElement('button');
       b.className = 'secondary';
       b.innerHTML = `${POWER_INFO[p].icon} <b>${POWER_INFO[p].name}</b><small>${POWER_INFO[p].desc}</small>`;
-      b.addEventListener('click', () => { unlockAudio(); powers.push(p); sfx.play('power'); levelEl.hidden = true; syncPowers(); startRound(); });
+      b.addEventListener('click', () => {
+        unlockAudio(); powers.push(p); sfx.play('power'); b.disabled = true; left--;
+        if (left <= 0) { levelEl.hidden = true; syncPowers(); startRound(); }
+      });
       box.appendChild(b);
     }
   }
-  $('lvGo').hidden = i > 0;
+  $('lvGo').hidden = picks > 0;
   phase = 'levelup';
   levelEl.hidden = false;
 }
@@ -125,74 +143,182 @@ function usePower(k: number): void {
   syncPowers();
 }
 
-function choose(choice: number | 'wait'): void {
+// ---------- Wahl ----------
+function bubbleFor(choice: number): { x: number; y: number; text: string } | null {
+  let speaker = -1;
+  for (let j = 0; j < slots.length; j++) { const s = slots[j]; if (s.kind === 'taken' && j !== choice && Math.abs(j - choice) <= 2 && (speaker < 0 || Math.abs(j - choice) < Math.abs(speaker - choice))) speaker = j; }
+  if (speaker >= 0) { const s = slots[speaker] as { who: { trait: keyof typeof TRAIT_INFO } }; return { x: slotX(slots.length, speaker), y: FLOOR_Y - 200, text: TRAIT_INFO[s.who.trait].line }; }
+  if (slots[choice].kind === 'broken') return { x: slotX(slots.length, choice), y: FLOOR_Y - 200, text: 'That one is broken, genius.' };
+  if (slots[choice].kind === 'wet') return { x: slotX(slots.length, choice), y: FLOOR_Y - 200, text: 'Your shoes. Look at your shoes.' };
+  if (answer.waitIsBest) return { x: slotX(slots.length, choice), y: FLOOR_Y - 200, text: answer.stallFree ? 'There was a free stall.' : 'Should have waited.' };
+  return null;
+}
+
+function choose(choice: Choice): void {
+  if (phase === 'moving') { chooseMove(choice); return; }
   if (phase !== 'choosing') return;
   const ok = isCorrect(answer, choice);
   phase = 'reacting';
   sc.reactT = 0;
-  if (choice === 'wait') {
+  if (choice === 'wait' || choice === 'stall') {
     sc.playerState = 'waiting';
     sc.playerTarget = null;
     sc.reactKind = ok ? 'good' : 'bad';
     sc.reactSlot = -1;
-    if (!ok) sc.good = goodSlots(answer);
-    if (!ok) sc.bubble = { x: DOOR_X + 40, y: FLOOR_Y - 200, text: 'Why are you just standing there?' };
-    resolve(ok, ok ? 'Smart. Waited it out.' : 'Nothing wrong with that spot, mate.');
+    if (choice === 'stall') sc.playerX = STALL.x + STALL.w / 2;
+    if (!ok) { sc.good = goodSlots(answer); sc.bubble = { x: DOOR_X + 40, y: FLOOR_Y - 200, text: choice === 'stall' ? (answer.stallFree ? 'Nothing wrong with the urinals.' : "It's occupied. Read the sign.") : (answer.stallFree ? 'The stall is free. Just go.' : 'Why are you just standing there?') }; }
+    if (ok) { if (choice === 'wait') count('waits', 'patient', 10); else count('stalls', 'stall', 5); }
+    resolve(ok, ok ? '' : choice === 'stall' ? 'Wrong call on the stall.' : 'Nothing wrong with that spot, mate.');
     return;
   }
+  if (choice === 'stay') return;
   sc.playerTarget = choice;
   sc.playerState = 'walking';
   sc.playerT = 0;
   sc.reactKind = 'none';
   setTimeout(() => {
     if (phase !== 'reacting') return;
-    sc.playerState = ok ? 'standing' : 'shame';
-    sc.reactKind = ok ? 'good' : 'bad';
-    sc.reactSlot = choice;
-    sc.reactT = 0;
-    if (ok) sfx.play('zip', 0.05, 0.5);
-    else sc.good = goodSlots(answer);
-    const v = judge(slots, choice);
-    if (!ok) {
-      let speaker = -1;
-      for (let j = 0; j < slots.length; j++) { const s = slots[j]; if (s.kind === 'taken' && Math.abs(j - choice) <= 2 && (speaker < 0 || Math.abs(j - choice) < Math.abs(speaker - choice))) speaker = j; }
-      if (speaker >= 0) { const s = slots[speaker] as { who: { trait: keyof typeof TRAIT_INFO } }; sc.bubble = { x: slotX(slots.length, speaker), y: FLOOR_Y - 200, text: TRAIT_INFO[s.who.trait].line }; }
-      else if (slots[choice].kind === 'broken') sc.bubble = { x: slotX(slots.length, choice), y: FLOOR_Y - 200, text: 'That one is broken, genius.' };
-      else if (slots[choice].kind === 'wet') sc.bubble = { x: slotX(slots.length, choice), y: FLOOR_Y - 200, text: 'Your shoes. Look at your shoes.' };
-      else if (answer.waitIsBest) sc.bubble = { x: slotX(slots.length, choice), y: FLOOR_Y - 200, text: 'Should have waited.' };
-    } else {
-      const friendly = slots.some((s, j) => s.kind === 'taken' && s.who.trait === 'friend' && Math.abs(j - choice) === 1);
-      if (friendly) sc.bubble = { x: slotX(slots.length, choice), y: FLOOR_Y - 200, text: TRAIT_INFO.friend.line };
-    }
-    resolve(ok, ok ? '' : v.reasons[0] ?? (answer.waitIsBest ? 'Every spot was bad. Waiting was the move.' : 'There was a better spot.'));
+    arrive(choice, ok);
   }, 620);
 }
 
+function arrive(choice: number, ok: boolean): void {
+  sc.playerState = ok ? 'standing' : 'shame';
+  sc.reactKind = ok ? 'good' : 'bad';
+  sc.reactSlot = choice;
+  sc.reactT = 0;
+  playerSlot = choice;
+  if (ok) {
+    sfx.play('zip', 0.05, 0.5);
+    const friendly = slots.some((s, j) => s.kind === 'taken' && s.who.trait === 'friend' && Math.abs(j - choice) === 1);
+    if (friendly) { sc.bubble = { x: slotX(slots.length, choice), y: FLOOR_Y - 200, text: TRAIT_INFO.friend.line }; count('mates', 'mate', 5); }
+    award('smooth');
+  } else {
+    sc.good = goodSlots(answer);
+    sc.bubble = bubbleFor(choice);
+  }
+  const v = judge(slots, choice);
+  resolve(ok, ok ? '' : v.reasons[0] ?? (answer.waitIsBest ? 'Every spot was bad. Waiting was the move.' : 'There was a better spot.'));
+}
+
+// ---------- Nachzügler ----------
+function startLatecomer(): boolean {
+  const occupied: Slot[] = slots.map((s, i) => (i === playerSlot ? { kind: 'taken', who: { trait: 'normal', shirt: '#3d7bd6', skin: '#f1c7a3', hair: '#5a3a22', hat: false } } : s));
+  const at = addLatecomer(occupied, playerSlot, rng, level.traits);
+  if (at < 0) return false;
+  slots = occupied.map((s, i) => (i === playerSlot ? { kind: 'free' } : s));
+  slots[at] = occupied[at];
+  sc.slots = slots;
+  sc.late = { slot: at, x: DOOR_X + 40, t: 0 };
+  sc.bubble = null; sc.reactKind = 'none';
+  phase = 'moving';
+  moveAnswer = solveMove(slots, playerSlot);
+  bladder = Math.max(bladder, bladderMax * 0.5);
+  setTimeout(() => { if (phase === 'moving') { sc.moveMode = true; sc.late = null; floats.add('SOMEONE JUST WALKED IN', W / 2, 250, { color: '#ff5e5e', size: 18, life: 1.4 }); sfx.play('door', 0.05, 0.6); } }, 700);
+  return true;
+}
+
+function chooseMove(choice: Choice): void {
+  if (!moveAnswer || !sc.moveMode) return;
+  const ok = isMoveCorrect(moveAnswer, choice);
+  sc.moveMode = false;
+  phase = 'reacting';
+  sc.reactT = 0;
+  if (choice === 'stay' || typeof choice !== 'number') {
+    sc.reactKind = ok ? 'good' : 'bad';
+    sc.reactSlot = playerSlot;
+    sc.playerState = ok ? 'standing' : 'shame';
+    if (!ok) { sc.good = moveAnswer.scores.map((_, i) => i).filter((i) => isMoveCorrect(moveAnswer!, i)); sc.bubble = { x: slotX(slots.length, playerSlot), y: FLOOR_Y - 200, text: 'You could have just moved.' }; }
+    if (ok) count('moves', 'mover', 5);
+    resolve(ok, ok ? '' : 'There was a clean spot. Moving is fine.');
+    return;
+  }
+  // Wechsel
+  const from = playerSlot;
+  sc.playerTarget = choice; sc.playerState = 'walking'; sc.playerT = 0;
+  const fromX = slotX(slots.length, from);
+  sc.playerX = fromX;
+  playerSlot = choice;
+  setTimeout(() => {
+    if (phase !== 'reacting') return;
+    sc.playerState = ok ? 'standing' : 'shame';
+    sc.reactKind = ok ? 'good' : 'bad';
+    sc.reactSlot = choice; sc.reactT = 0;
+    if (ok) { sfx.play('zip', 0.05, 0.5); count('moves', 'mover', 5); }
+    else { sc.good = moveAnswer!.moveIsRight ? moveAnswer!.scores.map((_, i) => i).filter((i) => isMoveCorrect(moveAnswer!, i)) : []; sc.bubble = { x: slotX(slots.length, from), y: FLOOR_Y - 200, text: moveAnswer!.moveIsRight ? 'Not there either.' : 'Hopping around is weirder than staying.' }; }
+    resolve(ok, ok ? '' : moveAnswer!.moveIsRight ? 'Wrong spot to move to.' : 'Everything was bad. Staying was the move.');
+  }, 620);
+}
+
+// ---------- Spiegel ----------
+function startMirror(): boolean {
+  const talkers = slots.map((s, i) => (s.kind === 'taken' && (s.who.trait === 'talker' || s.who.trait === 'ex') ? i : -1)).filter((i) => i >= 0 && i !== playerSlot);
+  if (!talkers.length) return false;
+  sc.mirror = { t: 0, slot: talkers[Math.floor(rng() * talkers.length)], done: false };
+  sc.bubble = null;
+  phase = 'mirror';
+  return true;
+}
+
+function mirrorResult(ok: boolean): void {
+  if (!sc.mirror) return;
+  sc.mirror.done = true;
+  phase = 'reacting';
+  sc.reactT = 0;
+  sc.reactKind = ok ? 'good' : 'bad';
+  sc.reactSlot = playerSlot;
+  if (ok) { floats.add('ICE COLD', W / 2, 250, { color: '#5cf2a0', size: 22, life: 1.2 }); count('mirror', 'ice', 5); }
+  else { sc.playerState = 'shame'; sc.bubble = { x: slotX(slots.length, sc.mirror.slot), y: FLOOR_Y - 200, text: 'Eye contact. In the mirror. Wow.' }; }
+  resolve(ok, ok ? '' : 'Never look in the mirror.');
+}
+
+// ---------- Handtrockner ----------
+function startDryer(): void {
+  phase = 'dryer';
+  sc.dryer = { t: 0, hit: null };
+  waitBtn.hidden = true; stallBtn.hidden = true;
+}
+function dryerTap(): void {
+  if (!sc.dryer || sc.dryer.hit !== null) return;
+  const k = dryerPos(sc.dryer.t);
+  sc.dryer.hit = k;
+  const [a, b] = DRYER.zone;
+  if (k >= a && k <= b) { meta.tokens++; saveMeta(meta); sfx.play('good'); count('dryer', 'dryer', 3); vibrate(20); }
+  else if (k >= a - 0.08 && k <= b + 0.08) { score += 20; sfx.play('power'); }
+  else sfx.play('bad', 0.02, 0.5);
+  syncHud();
+  setTimeout(() => { sc.dryer = null; startLevel(levelIndex + 1); }, 1300);
+}
+
+// ---------- Auswertung ----------
 function resolve(ok: boolean, reason: string): void {
   rounds++;
   if (ok) {
     streak++; bestStreak = Math.max(bestStreak, streak);
+    if (streak >= 10) award('streak10');
     const gained = 10 * multiplier() + Math.round((bladder / bladderMax) * 5);
     score += gained;
     floats.add(`+${gained}`, W / 2, 300, { color: '#5cf2a0', size: 24 });
     if (streak > 0 && streak % 3 === 0) floats.add(`×${multiplier()}`, W / 2, 340, { color: '#ffd23f', size: 30, life: 1 });
-    particles.emit({ x: sc.playerTarget === null ? DOOR_X + 40 : slotX(slots.length, sc.playerTarget), y: URINAL_Y + 60, count: 20, speed: 120, life: 0.5, color: '#5cf2a0', size: 3 });
+    particles.emit({ x: sc.playerTarget === null ? sc.playerX : slotX(slots.length, sc.playerTarget), y: URINAL_Y + 60, count: 20, speed: 120, life: 0.5, color: '#5cf2a0', size: 3 });
     sfx.play('good', 0.03, 0.7 + Math.min(0.4, streak * 0.04));
     if (streak > 0 && streak % 5 === 0) sfx.play('applause', 0.02, 0.5);
     vibrate(12);
-    for (const m of MILESTONES) if (rounds === m && !meta.milestones.includes(m)) { meta.milestones.push(m); save(META_KEY, meta); setTimeout(() => { floats.add(`${m} ROUNDS · MILESTONE`, W / 2, 380, { color: '#ffd23f', size: 18, life: 1.6 }); sfx.play('bells'); }, 500); }
+    for (const m of MILESTONES) if (rounds === m && !meta.milestones.includes(m)) { meta.milestones.push(m); saveMeta(meta); setTimeout(() => { floats.add(`${m} ROUNDS · MILESTONE`, W / 2, 380, { color: '#ffd23f', size: 18, life: 1.6 }); sfx.play('bells'); }, 500); }
   } else {
-    streak = 0;
-    strikes++;
-    shake.add(0.5);
-    sfx.play('bad');
-    vibrate([40, 30, 60]);
+    streak = 0; strikes++; levelStrikes++; awkward++;
+    shake.add(0.5); sfx.play('bad'); vibrate([40, 30, 60]);
     if (reason) floats.add(reason, W / 2, 300, { color: '#ff5e5e', size: 15, life: 2 });
   }
   syncHud();
   const wait = ok ? 1100 : 1900;
   setTimeout(() => {
     if (strikes >= 3) { gameOver(reason); return; }
+    // Nach einem richtigen Platz: Nachzügler oder Spiegel-Moment, je einmal pro Runde
+    if (ok && sc.playerState === 'standing' && phase === 'reacting') {
+      if (!moveAnswer && level.latecomer > 0 && rng() < level.latecomer && startLatecomer()) return;
+      if (!sc.mirror && level.mirror && rng() < 0.35 && startMirror()) return;
+    }
     nextRound(ok);
   }, wait);
 }
@@ -202,8 +328,10 @@ function nextRound(ok: boolean): void {
   if (ok && sc.playerState === 'standing') sfx.play('flush', 0.1, 0.5);
   if (round >= level.rounds) {
     sfx.play('level');
-    if (levelIndex + 1 > meta.bestLevel) { meta.bestLevel = levelIndex + 1; save(META_KEY, meta); }
-    startLevel(levelIndex + 1);
+    if (levelIndex + 1 > meta.bestLevel) { meta.bestLevel = levelIndex + 1; saveMeta(meta); }
+    if (level.name === 'The Boss' && levelStrikes === 0) award('noboss');
+    if (level.name === 'Rush Hour') { award('rush'); award('day'); }
+    startDryer();
   } else startRound();
 }
 
@@ -213,20 +341,22 @@ function gameOver(reason: string): void {
   samples.stopLoop(1.5);
   meta.games++;
   if (score > meta.best) meta.best = score;
-  save(META_KEY, meta);
+  if (daily) { const k = new Date().toISOString().slice(0, 10); meta.daily[k] = Math.max(meta.daily[k] ?? 0, rounds); award('daily'); }
+  saveMeta(meta);
   $('finalScore').textContent = String(score);
   $('finalReason').textContent = reason || 'Three awkward moments. Everyone remembers.';
-  $('finalStats').textContent = `${rounds} rounds · level ${levelIndex + 1} · best streak ${bestStreak}`;
+  $('finalStats').textContent = `${rounds} rounds · level ${levelIndex + 1} · best streak ${bestStreak}${daily ? ' · daily run' : ''}`;
   $('finalBest').textContent = score >= meta.best ? 'New record!' : `Record: ${meta.best}`;
   overEl.hidden = false;
+  void loadBoard(score);
 }
 
-function startGame(): void {
-  rng = mulberry32((Date.now() >>> 0) || 1);
-  score = 0; streak = 0; bestStreak = 0; strikes = 0; rounds = 0; powers = [];
+function startGame(isDaily: boolean): void {
+  daily = isDaily;
+  rng = mulberry32(isDaily ? dailySeed() : ((Date.now() >>> 0) || 1));
+  score = 0; streak = 0; bestStreak = 0; strikes = 0; rounds = 0; awkward = 0; powers = [];
   startEl.hidden = true; overEl.hidden = true;
-  syncPowers();
-  syncHud();
+  syncPowers(); syncHud();
   startLevel(0);
 }
 
@@ -236,21 +366,61 @@ function syncHud(): void {
   hud.strikes.textContent = '●'.repeat(3 - strikes) + '○'.repeat(strikes);
 }
 
+// ---------- Highscore ----------
+async function loadBoard(mine: number): Promise<void> {
+  const box = $('board');
+  box.hidden = true;
+  try {
+    const r = await fetch('/api/scores');
+    if (!r.ok) return;
+    const j = (await r.json()) as { week: string; top: { name: string; score: number }[] };
+    box.hidden = false;
+    $('boardList').innerHTML = j.top.length ? j.top.map((e, i) => `<div class="row"><span>#${i + 1}</span><b>${e.name}</b><span>${e.score}</span></div>`).join('') : '<div class="row"><span>Nobody yet. Be the first.</span></div>';
+    const qualifies = mine > 0 && (j.top.length < 10 || mine > j.top[j.top.length - 1].score);
+    $('boardSubmit').hidden = !qualifies;
+  } catch { /* kein Board */ }
+}
+$('boardBtn').addEventListener('click', async () => {
+  const name = ($('boardName') as HTMLInputElement).value.trim() || 'anon';
+  $('boardSubmit').hidden = true;
+  try { await fetch('/api/scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, score }) }); } catch { /* egal */ }
+  void loadBoard(0);
+});
+
+// ---------- Start-Screen ----------
+function renderStart(): void {
+  $('bestLine').textContent = meta.best > 0 ? `Record ${meta.best} · reached level ${meta.bestLevel}` : 'Nobody has gone yet.';
+  const k = new Date().toISOString().slice(0, 10);
+  $('dailyLine').textContent = meta.daily[k] ? `Today's daily: ${meta.daily[k]} rounds` : 'Same rooms for everyone today.';
+  $('achs').innerHTML = ACHIEVEMENTS.map((a) => `<span class="ach ${meta.achievements.includes(a.id) ? 'on' : ''}" title="${a.name}: ${a.desc}">${a.icon}</span>`).join('');
+  $('tokens').textContent = meta.tokens > 0 ? `💨 ${meta.tokens} dry-hands token${meta.tokens > 1 ? 's' : ''}` : '';
+}
+$('shareBtn').addEventListener('click', async () => {
+  const text = `PISSOIR${daily ? ' · daily' : ''} · ${rounds} rounds · level ${levelIndex + 1} · ${awkward} awkward moment${awkward === 1 ? '' : 's'} · score ${score}\n${'🚽'.repeat(Math.min(10, Math.floor(rounds / 3)))}${'😳'.repeat(awkward)}\n${location.origin}${location.pathname}`;
+  try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); floats.add('Copied', W / 2, 300, { color: '#1a2a30', size: 18 }); } } catch { /* abgebrochen */ }
+});
+
+// ---------- Input ----------
 bindPointer(view, {
   up(x, y) {
     unlockAudio();
-    if (phase !== 'choosing') return;
+    if (phase === 'dryer') { dryerTap(); return; }
+    if (phase === 'mirror' && sc.mirror && !sc.mirror.done) { if (y < 230) mirrorResult(false); return; }
+    if (phase !== 'choosing' && phase !== 'moving') return;
     if (y < URINAL_Y - 90 || y > FLOOR_Y + 60) return;
     const n = slots.length;
     const w = slotW(n);
-    for (let i = 0; i < n; i++) if (Math.abs(x - slotX(n, i)) < Math.max(w / 2 + 8, (W - 110) / n / 2)) { choose(i); return; }
+    for (let i = 0; i < n; i++) if (Math.abs(x - slotX(n, i)) < Math.max(w / 2 + 8, (W - 110) / n / 2)) { choose(phase === 'moving' && i === playerSlot ? 'stay' : i); return; }
   },
 });
 waitBtn.addEventListener('click', () => { unlockAudio(); choose('wait'); });
-$('startBtn').addEventListener('click', () => { unlockAudio(); startGame(); });
-$('againBtn').addEventListener('click', () => { unlockAudio(); startGame(); });
+stallBtn.addEventListener('click', () => { unlockAudio(); choose('stall'); });
+$('startBtn').addEventListener('click', () => { unlockAudio(); startGame(false); });
+$('dailyBtn').addEventListener('click', () => { unlockAudio(); startGame(true); });
+$('againBtn').addEventListener('click', () => { unlockAudio(); startGame(daily); });
+$('menuBtn').addEventListener('click', () => { overEl.hidden = true; renderStart(); startEl.hidden = false; });
 $('lvGo').addEventListener('click', () => { unlockAudio(); levelEl.hidden = true; startRound(); });
-$('bestLine').textContent = meta.best > 0 ? `Record ${meta.best} · reached level ${meta.bestLevel}` : 'Nobody has gone yet.';
+renderStart();
 
 startLoop({
   update(dt) {
@@ -258,14 +428,23 @@ startLoop({
     sc.reactT += dt;
     if (sc.playerState === 'walking' && sc.playerTarget !== null) {
       sc.playerT = Math.min(1, sc.playerT + dt / 0.6);
+      const fromX = phase === 'reacting' && moveAnswer ? sc.playerX : DOOR_X + 40;
       const tx = slotX(slots.length, sc.playerTarget);
-      sc.playerX = DOOR_X + 40 + (tx - DOOR_X - 40) * (1 - Math.pow(1 - sc.playerT, 3));
+      if (!moveAnswer) sc.playerX = DOOR_X + 40 + (tx - DOOR_X - 40) * (1 - Math.pow(1 - sc.playerT, 3));
+      else sc.playerX = fromX + (tx - fromX) * Math.min(1, dt / 0.6 * 4);
       tickAcc += dt; if (tickAcc > 0.22) { tickAcc = 0; sfx.play('step', 0.12, 0.5); }
     }
-    if (phase === 'choosing') {
+    if (sc.late) {
+      sc.late.t = Math.min(1, sc.late.t + dt / 0.7);
+      const tx = slotX(slots.length, sc.late.slot);
+      sc.late.x = DOOR_X + 40 + (tx - DOOR_X - 40) * (1 - Math.pow(1 - sc.late.t, 3));
+    }
+    if (phase === 'mirror' && sc.mirror && !sc.mirror.done) { sc.mirror.t += dt; if (sc.mirror.t >= 1.8) mirrorResult(true); }
+    if (sc.dryer && sc.dryer.hit === null) sc.dryer.t += dt;
+    if (phase === 'choosing' || phase === 'moving') {
       bladder -= dt;
       if (bladder < bladderMax * 0.3) { tickAcc += dt; if (tickAcc > 0.4) { tickAcc = 0; sfx.play('tick', 0.02, 0.5); } }
-      if (bladder <= 0) { bladder = 0; phase = 'reacting'; sc.reactKind = 'bad'; sc.playerState = 'shame'; sc.reactT = 0; sc.bubble = { x: DOOR_X + 40, y: FLOOR_Y - 200, text: 'Too late.' }; resolve(false, 'Too slow. Now everyone knows.'); }
+      if (bladder <= 0) { bladder = 0; sc.moveMode = false; phase = 'reacting'; sc.reactKind = 'bad'; sc.playerState = 'shame'; sc.reactT = 0; sc.bubble = { x: sc.playerX, y: FLOOR_Y - 200, text: 'Too late.' }; resolve(false, 'Too slow. Now everyone knows.'); }
     }
     particles.update(dt); floats.update(dt); shake.update(dt);
   },

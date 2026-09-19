@@ -21,6 +21,12 @@ export interface Scene {
   t: number;
   theme: Theme;
   good: number[];   // nach einem Fehler: die Plätze, die richtig gewesen wären
+  stallFree: boolean;
+  showStall: boolean;
+  late: { slot: number; x: number; t: number } | null;   // Nachzügler läuft ein
+  mirror: { t: number; slot: number; done: boolean } | null; // Spiegel-Moment
+  dryer: { t: number; hit: number | null } | null;      // Handtrockner-Bonus
+  moveMode: boolean;
 }
 
 const LEFT = 96, RIGHT = 14;
@@ -130,6 +136,26 @@ function drawRoom(ctx: CanvasRenderingContext2D, th: Theme, t: number): void {
   ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '800 9px Inter, system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('EXIT', 35, 232);
   drawProp(ctx, th, t);
+  // Spiegelstreifen über den Pissoirs
+  ctx.fillStyle = th.mirror;
+  rr(ctx, 90, 150, W - 104, 62, 6); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';
+  ctx.beginPath(); ctx.moveTo(100, 154); ctx.lineTo(150, 154); ctx.lineTo(120, 208); ctx.lineTo(96, 208); ctx.closePath(); ctx.fill();
+}
+
+export const STALL = { x: W - 74, y: 236, w: 66, h: 324 };
+function drawStall(ctx: CanvasRenderingContext2D, th: Theme, free: boolean, t: number): void {
+  const { x, y, w, h } = STALL;
+  ctx.fillStyle = th.stall; rr(ctx, x - 4, y - 8, w + 8, h + 8, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x, y + 20, w, h - 60);
+  ctx.fillStyle = th.stall; rr(ctx, x + 4, y + 24, w - 8, h - 68, 3); ctx.fill();
+  ctx.fillStyle = free ? '#5cf2a0' : '#ff5e5e';
+  rr(ctx, x + w / 2 - 16, y + 60, 32, 18, 3); ctx.fill();
+  ctx.fillStyle = '#0a1a10'; ctx.font = '800 8px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(free ? 'VACANT' : 'IN USE', x + w / 2, y + 69);
+  ctx.fillStyle = '#d9c9a6'; ctx.beginPath(); ctx.arc(x + 12, y + 170, 4, 0, Math.PI * 2); ctx.fill();
+  if (!free) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h - 30, 14 + Math.sin(t * 2) * 1, 5, 0, 0, Math.PI * 2); ctx.fill(); }
 }
 
 function drawUrinal(ctx: CanvasRenderingContext2D, x: number, w: number, slot: Slot, highlight: number, t: number, th: Theme): void {
@@ -235,6 +261,22 @@ export function drawPerson(ctx: CanvasRenderingContext2D, x: number, p: Person |
     if (who.trait === 'boss') { ctx.fillStyle = shade(who.shirt, 0.7); ctx.fillRect(-22, -118, 44, 6); }
     if (who.trait === 'friend') { ctx.fillStyle = '#0a1a10'; ctx.font = '700 11px Caveat, cursive'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('BRO', 0, -84); }
     if (opts.player) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(-22, -70, 44, 3); }
+    if (who.trait === 'dog') {
+      // Leine und Hund neben ihm
+      ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(26, -76); ctx.quadraticCurveTo(40, -40, 44, -10); ctx.stroke();
+      ctx.fillStyle = '#c9a26b'; ctx.beginPath(); ctx.ellipse(50, -8, 16, 9, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(64, -14, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8a6a4a'; ctx.beginPath(); ctx.ellipse(66, -20, 4, 6, 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1a1a1a'; ctx.beginPath(); ctx.arc(67, -15, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#c9a26b'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(36, -6 + Math.sin(t * 6) * 3); ctx.lineTo(28, -14 + Math.sin(t * 6) * 4); ctx.stroke();
+      for (const lx of [42, 56]) { ctx.beginPath(); ctx.moveTo(lx, -2); ctx.lineTo(lx, 2); ctx.stroke(); }
+    }
+    if (who.trait === 'singer') {
+      ctx.fillStyle = '#c026d3'; ctx.font = '800 14px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const k = (t * 0.6) % 1;
+      ctx.globalAlpha = 1 - k; ctx.fillText('♪', 26 + k * 10, -170 - k * 30); ctx.fillText('♫', -26 - k * 8, -180 - ((k + 0.5) % 1) * 30); ctx.globalAlpha = 1;
+    }
   } else {
     // Von vorn: Arme hängen, Hände sichtbar
     ctx.strokeStyle = sleeve; ctx.lineWidth = 12;
@@ -334,6 +376,7 @@ export function render(ctx: CanvasRenderingContext2D, sc: Scene): void {
   const n = sc.slots.length;
   const w = slotW(n);
   drawRoom(ctx, sc.theme, sc.t);
+  if (sc.showStall) drawStall(ctx, sc.theme, sc.stallFree, sc.t);
   sc.slots.forEach((slot, i) => {
     let hl = sc.reactKind === 'good' && sc.reactSlot === i ? Math.max(0, 1 - sc.reactT / 1.2) : 0;
     if (sc.reactKind === 'bad' && sc.good.includes(i)) hl = 0.5 + 0.5 * Math.sin(sc.t * 8);
@@ -354,6 +397,29 @@ export function render(ctx: CanvasRenderingContext2D, sc: Scene): void {
     const wave = slot.who.trait === 'friend' && sc.reactKind === 'good' && d === 1;
     drawPerson(ctx, x, slot.who, sc.t + i * 1.7, { look, wave, view: 'back' });
   });
+  // Nachzügler läuft von der Tür zu seinem Platz
+  if (sc.late) {
+    const slot = sc.slots[sc.late.slot];
+    if (slot.kind === 'taken') drawPerson(ctx, sc.late.x, slot.who, sc.t, { view: sc.late.t < 1 ? 'front' : 'back', walk: sc.late.t < 1 ? 1 : 0 });
+  }
+  // Spiegel-Moment: Augen des Quatschers im Spiegel
+  if (sc.mirror && !sc.mirror.done) {
+    const x = slotX(n, sc.mirror.slot);
+    const k = Math.min(1, sc.mirror.t / 0.3);
+    ctx.save(); ctx.globalAlpha = k;
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(x - 9, 181, 7, 5, 0, 0, Math.PI * 2); ctx.ellipse(x + 9, 181, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
+    const px = sc.playerX;
+    const dir = Math.max(-1, Math.min(1, (px - x) / 120));
+    ctx.fillStyle = '#1a1a1a'; ctx.beginPath(); ctx.arc(x - 9 + dir * 3, 181, 3, 0, Math.PI * 2); ctx.arc(x + 9 + dir * 3, 181, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,94,94,0.9)'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(x + 9 + dir * 3, 181); ctx.lineTo(px, 181); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#ff5e5e'; ctx.font = '800 12px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText("HE'S LOOKING. DON'T TAP.", W / 2, 130);
+    // Restzeit
+    ctx.fillStyle = 'rgba(26,42,48,0.3)'; ctx.fillRect(W / 2 - 60, 140, 120, 4);
+    ctx.fillStyle = '#5cf2a0'; ctx.fillRect(W / 2 - 60, 140, 120 * Math.min(1, sc.mirror.t / 1.8), 4);
+    ctx.restore();
+  }
   const walking = sc.playerState === 'walking';
   const shame = sc.playerState === 'shame' ? Math.min(1, sc.reactT * 2) : 0;
   if (sc.playerState === 'waiting' || sc.playerState === 'door') drawPerson(ctx, DOOR_X + 40, null, sc.t, { player: true, view: 'front', shame });
@@ -362,4 +428,44 @@ export function render(ctx: CanvasRenderingContext2D, sc: Scene): void {
   if (sc.bubble) drawBubble(ctx, sc.bubble.x, sc.bubble.y, sc.bubble.text, easeOutBack(Math.min(1, sc.reactT / 0.25)));
   if (sc.reactKind === 'good' && sc.reactT < 1) stamp(ctx, 'SMOOTH', '#5cf2a0', '#0a1a10', -0.12, sc.reactT, 0.7);
   if (sc.reactKind === 'bad' && sc.reactT < 1.4) stamp(ctx, 'AWKWARD', '#ff5e5e', '#2a0a0a', 0.1, sc.reactT, 1);
+  if (sc.moveMode) {
+    ctx.fillStyle = 'rgba(26,42,48,0.85)'; rr(ctx, W / 2 - 120, 118, 240, 34, 17); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '800 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('MOVE? Tap a spot, or tap yourself to stay', W / 2, 135);
+  }
+  if (sc.dryer) drawDryer(ctx, sc.dryer, sc.t);
+}
+
+/** Handtrockner-Bonus: Zeiger pendelt, Tap in der grünen Zone. */
+export const DRYER = { x: W / 2, y: 330, w: 260, zone: [0.42, 0.58] as [number, number] };
+export function dryerPos(t: number): number { return 0.5 + 0.5 * Math.sin(t * 5.2); }
+function drawDryer(ctx: CanvasRenderingContext2D, d: { t: number; hit: number | null }, t: number): void {
+  ctx.fillStyle = 'rgba(26,42,48,0.55)'; ctx.fillRect(0, 0, W, H);
+  const { x, y, w } = DRYER;
+  ctx.fillStyle = '#ffffff'; rr(ctx, x - 150, y - 150, 300, 300, 22); ctx.fill();
+  ctx.fillStyle = '#1a2a30'; ctx.font = '800 22px "Archivo Black", Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('HAND DRYER', x, y - 112);
+  ctx.font = '600 13px Inter, system-ui, sans-serif'; ctx.fillStyle = '#4a5a60';
+  ctx.fillText('Tap when the air is in the green', x, y - 84);
+  // Gerät
+  ctx.fillStyle = '#c9d6da'; rr(ctx, x - 60, y - 60, 120, 70, 12); ctx.fill();
+  ctx.fillStyle = '#9fb0b6'; rr(ctx, x - 30, y + 4, 60, 12, 4); ctx.fill();
+  // Luftstoß
+  const k = d.hit === null ? dryerPos(d.t) : d.hit;
+  const p = 0.5 - Math.abs(k - 0.5);
+  ctx.strokeStyle = `rgba(120,190,230,${0.3 + p})`; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(x - 24 + i * 12, y + 20); ctx.lineTo(x - 24 + i * 12 + Math.sin(t * 20 + i) * 4, y + 60 + p * 60); ctx.stroke(); }
+  // Balken
+  ctx.fillStyle = '#e6edf0'; rr(ctx, x - w / 2, y + 96, w, 18, 9); ctx.fill();
+  const [a, b] = DRYER.zone;
+  ctx.fillStyle = '#5cf2a0'; rr(ctx, x - w / 2 + w * a, y + 96, w * (b - a), 18, 6); ctx.fill();
+  ctx.fillStyle = '#ffd23f'; rr(ctx, x - w / 2 + w * (a - 0.08), y + 96, w * 0.08, 18, 4); ctx.fill(); rr(ctx, x - w / 2 + w * b, y + 96, w * 0.08, 18, 4); ctx.fill();
+  ctx.fillStyle = d.hit === null ? '#1a2a30' : (k >= a && k <= b ? '#1f7a5a' : '#c0392b');
+  rr(ctx, x - w / 2 + w * k - 4, y + 88, 8, 34, 4); ctx.fill();
+  if (d.hit !== null) {
+    const inZone = k >= a && k <= b, near = k >= a - 0.08 && k <= b + 0.08;
+    ctx.fillStyle = inZone ? '#1f7a5a' : near ? '#b8860b' : '#c0392b';
+    ctx.font = '800 26px "Archivo Black", Inter, sans-serif';
+    ctx.fillText(inZone ? 'PERFECT · +1 PERK' : near ? 'DAMP · +20' : 'STILL WET', x, y + 140);
+  }
 }
