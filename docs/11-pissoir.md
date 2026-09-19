@@ -103,3 +103,15 @@ Auswahl nach Namen, Dauer und Pegel, nicht per Ohr. Wenn ein Clip nicht passt, a
 9. **Wochen-Highscore**: `api/scores.ts` als Edge Function, Redis-Sorted-Set pro Kalenderwoche, Top 10, Name auf 14 Zeichen gefiltert. Der Client zeigt das Board nur, wenn die API antwortet. **Braucht einen Store:** im Vercel-Dashboard unter Storage einen Upstash-Redis (KV) anlegen und mit dem Projekt `gameskool` verbinden, dann sind `KV_REST_API_URL` und `KV_REST_API_TOKEN` gesetzt. Bis dahin antwortet die API mit `enabled:false` und das Board bleibt unsichtbar.
 
 78 Tests. Live geprüft: Level 1 bis Nachzügler, Handtrockner, Kabinen-Level, Daily-Start.
+
+## Runde fünf, 19. September: Gregs sieben Punkte
+
+1. **Spiegel ist jetzt eine Entscheidung.** Der Nachbar dreht sichtbar den Kopf zu dir, sein Gesicht fährt von unten in den Spiegelstreifen, rote Sichtlinie, und zwei Knöpfe erscheinen: "Stare at the wall" und "Look back" (beim Kumpel "Nod back"). Quatscher, Ex, Chef, Sänger wollen die Wand, der Kumpel das Nicken. Drei Sekunden Zeit, sonst zählt Wand. Der Spieler nickt sichtbar bei "Look back".
+2. **Lösbarkeit bei nur einem freien Pissoir.** Ursache war die Nass-Regel: Ein nasser Platz weit weg war richtig, das trockene Pissoir neben jemandem falsch, ohne Erklärung. Jetzt: In Levels ohne Warten-Knopf ist der richtige Platz immer trocken (Test). Ab Level 5 erklärt der Fehlertext "Wet shoes beat that." und die Level-Intros sagen es vorher.
+3. **Figuren neu** (`src/pissoir/characters.ts`): Kontur, Licht von links, drei Körperbauten, sechs Frisuren, Bärte, Brillen, Kleidung pro Charakter (Anzug mit Krawatte und Aktentasche, Hawaiihemd, Hoodie, Schal beim Duo, Lanyard beim Ex, Pailletten und Sonnenbrille beim Sänger, Bierbecher beim Kumpel, Rucksack beim Kind, Hund an der Leine), Idle-Schwanken, Blick ins Profil mit Nase und Braue.
+4. **Perks als Shop.** Vor jedem Level ab dem zweiten: drei Perks mit Icon, Wirkung in einem Satz und Preis in Punkten (90, 120, 160). Kauf zieht Punkte ab. Im HUD stehen die Icons mit Beschriftung ("2× time", "skip", "undo"). Der Handtrockner gibt jetzt Punkte statt Token.
+5. **Meilensteine klickbar und erklärt.** Panel auf dem Startscreen: "Survive N rounds in one run → Belohnung". Belohnungen sind tragbar: Cap, runde Brille, rotes Shirt, Sonnenbrille, Fedora, Goldshirt, Krone. Tap wechselt die Kleidung, je eins pro Kategorie. Der Spieler trägt es im Spiel.
+6. **Zwei Bosslevel** mit "BOSS LEVEL"-Badge und doppelten Punkten: The Giant nach Wait For It (belegt zwei Pissoirs, zählt einmal, +25 daneben), The Wanderer nach The Friend (läuft die Reihe ab, bleibt dann irgendwo stehen, die Blase pausiert solange, "WAIT FOR HIM").
+7. **Plakate** zwischen den Rohren, zwei bis drei pro Level, deterministisch: Divorce hotline, New Year New You (it is September), Missing: my dignity, AI SLOP INC. Certainly!, Dr. Bladder, Quiz night 2 for 1 shame, HODL your breath, Wanted: guy who talks at urinals, Learn German in 3 days "Pissoir", Hand dryer repair since 1998.
+
+81 Tests. Achievements 14.
