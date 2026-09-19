@@ -1,6 +1,6 @@
 /**
  * Wochen-Highscore für Pissoir. Braucht einen KV-Store (Upstash Redis über den Vercel Marketplace)
- * mit den Umgebungsvariablen KV_REST_API_URL und KV_REST_API_TOKEN. Ohne Store antwortet die API 503
+ * mit den Umgebungsvariablen KV_REST_API_URL und KV_REST_API_TOKEN. Ohne Store antwortet die API mit enabled:false
  * und das Spiel blendet das Board aus.
  */
 export const config = { runtime: 'edge' };
@@ -24,7 +24,7 @@ async function redis(cmd: unknown[]): Promise<unknown> {
 
 export default async function handler(req: Request): Promise<Response> {
   const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
-  if (!URL_ || !TOKEN) return new Response(JSON.stringify({ error: 'no store' }), { status: 503, headers });
+  if (!URL_ || !TOKEN) return new Response(JSON.stringify({ enabled: false, top: [] }), { status: 200, headers });
   const key = weekKey();
   if (req.method === 'POST') {
     let body: { name?: string; score?: number };

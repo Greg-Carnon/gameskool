@@ -389,6 +389,7 @@ export function render(ctx: CanvasRenderingContext2D, sc: Scene): void {
   });
   sc.slots.forEach((slot, i) => {
     if (slot.kind !== 'taken') return;
+    if (sc.late && sc.late.slot === i && sc.late.t < 1) return; // läuft noch ein, wird separat gezeichnet
     const x = slotX(n, i);
     let look = 0;
     const d = sc.playerTarget === null ? 99 : Math.abs(sc.playerTarget - i);

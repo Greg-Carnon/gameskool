@@ -100,6 +100,6 @@ Auswahl nach Namen, Dauer und Pegel, nicht per Ohr. Wenn ein Clip nicht passt, a
 6. **Story**: jedes Level hat Uhrzeit, Ort und einen Satz ("07:40 · Office. Monday. Coffee number two hits early."). Acht Orte ergeben einen Tag vom Büro bis zum Stadion. Danach "Day 2" und so weiter.
 7. **Daily Run**: eigener Knopf, Seed aus dem Datum, gleiche Räume für alle, beste Rundenzahl pro Tag gespeichert, Share-Text mit Runden, Level, "awkward moments" und Emoji-Zeile.
 8. **12 Achievements** mit Toast beim Freischalten, Liste auf dem Startscreen.
-9. **Wochen-Highscore**: `api/scores.ts` als Edge Function, Redis-Sorted-Set pro Kalenderwoche, Top 10, Name auf 14 Zeichen gefiltert. Der Client zeigt das Board nur, wenn die API antwortet. **Braucht einen Store:** im Vercel-Dashboard unter Storage einen Upstash-Redis (KV) anlegen und mit dem Projekt `gameskool` verbinden, dann sind `KV_REST_API_URL` und `KV_REST_API_TOKEN` gesetzt. Bis dahin antwortet die API 503 und das Board bleibt unsichtbar.
+9. **Wochen-Highscore**: `api/scores.ts` als Edge Function, Redis-Sorted-Set pro Kalenderwoche, Top 10, Name auf 14 Zeichen gefiltert. Der Client zeigt das Board nur, wenn die API antwortet. **Braucht einen Store:** im Vercel-Dashboard unter Storage einen Upstash-Redis (KV) anlegen und mit dem Projekt `gameskool` verbinden, dann sind `KV_REST_API_URL` und `KV_REST_API_TOKEN` gesetzt. Bis dahin antwortet die API mit `enabled:false` und das Board bleibt unsichtbar.
 
 78 Tests. Live geprüft: Level 1 bis Nachzügler, Handtrockner, Kabinen-Level, Daily-Start.

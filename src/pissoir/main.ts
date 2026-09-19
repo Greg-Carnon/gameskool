@@ -105,8 +105,9 @@ function startLevel(i: number): void {
   $('lvIntro').textContent = level.intro;
   const box = $('lvPowers');
   box.innerHTML = '';
-  const picks = i > 0 ? 1 + (meta.tokens > 0 ? 1 : 0) : 0;
-  $('lvPick').textContent = picks === 2 ? 'Dry hands: pick two perks' : picks === 1 ? 'Pick a perk:' : '';
+  let picks = i > 0 ? 1 + (meta.tokens > 0 ? 1 : 0) : 0;
+  if (powers.length >= 4) picks = 0;
+  $('lvPick').textContent = picks === 2 ? 'Dry hands: pick two perks' : picks === 1 ? 'Pick a perk:' : powers.length >= 4 ? 'Perks full. Use them.' : '';
   if (picks > 0) {
     let left = picks;
     if (meta.tokens > 0) { meta.tokens--; saveMeta(meta); }
@@ -373,7 +374,8 @@ async function loadBoard(mine: number): Promise<void> {
   try {
     const r = await fetch('/api/scores');
     if (!r.ok) return;
-    const j = (await r.json()) as { week: string; top: { name: string; score: number }[] };
+    const j = (await r.json()) as { enabled?: boolean; week: string; top: { name: string; score: number }[] };
+    if (j.enabled === false) return;
     box.hidden = false;
     $('boardList').innerHTML = j.top.length ? j.top.map((e, i) => `<div class="row"><span>#${i + 1}</span><b>${e.name}</b><span>${e.score}</span></div>`).join('') : '<div class="row"><span>Nobody yet. Be the first.</span></div>';
     const qualifies = mine > 0 && (j.top.length < 10 || mine > j.top[j.top.length - 1].score);
