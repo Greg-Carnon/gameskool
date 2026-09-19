@@ -421,6 +421,9 @@ $('againBtn').addEventListener('click', () => { unlockAudio(); startGame(daily);
 $('menuBtn').addEventListener('click', () => { overEl.hidden = true; renderStart(); startEl.hidden = false; });
 $('lvGo').addEventListener('click', () => { unlockAudio(); levelEl.hidden = true; startRound(); });
 renderStart();
+if (location.search.includes('debug')) {
+  (window as unknown as { __pq: () => unknown }).__pq = () => ({ phase, good: phase === 'moving' && moveAnswer ? (moveAnswer.moveIsRight ? moveAnswer.scores.map((_, i) => i).filter((i) => isMoveCorrect(moveAnswer!, i)) : ['stay']) : goodSlots(answer), wait: answer.waitIsBest, stall: answer.stallFree, n: slots.length, mirror: !!sc.mirror && !sc.mirror.done, dryer: !!sc.dryer, level: levelIndex, round });
+}
 
 startLoop({
   update(dt) {
