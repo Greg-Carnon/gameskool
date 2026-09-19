@@ -37,7 +37,10 @@ export interface Scene {
   moveMode: boolean;
 }
 
-const LEFT = 96, RIGHT = 14;
+const LEFT = 96;
+let RIGHT = 14;
+/** Mit Kabine rückt die Reihe nach links, damit nichts überlappt. */
+export function setStallLayout(on: boolean): void { RIGHT = on ? 88 : 14; }
 export function slotX(n: number, i: number): number {
   const span = W - LEFT - RIGHT;
   return LEFT + (span / n) * (i + 0.5);

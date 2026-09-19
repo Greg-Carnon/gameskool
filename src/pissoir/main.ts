@@ -10,7 +10,7 @@ import { unlockAudio } from '../kit/sfx';
 import { Shake } from '../kit/shake';
 import { ACHIEVEMENTS, bump, loadMeta, saveMeta, unlock, type PMeta } from './achievements';
 import type { Cosmetics } from './characters';
-import { DOOR_X, DRYER, dryerPos, FLOOR_Y, POSTERS, render, slotW, slotX, STALL, URINAL_Y, type Scene } from './render';
+import { DOOR_X, DRYER, dryerPos, FLOOR_Y, POSTERS, render, setStallLayout, slotW, slotX, STALL, URINAL_Y, type Scene } from './render';
 import { addLatecomer, goodSlots, isCorrect, isMoveCorrect, judge, levelAt, makeRound, mirrorLooker, placeWanderer, solve, solveMove, TRAIT_INFO, type Answer, type Choice, type LevelConfig, type MoveAnswer, type Round, type Slot } from './rules';
 import { themeAt, THEMES } from './themes';
 
@@ -136,6 +136,7 @@ function makePosters(i: number, n: number): Scene['posters'] {
 
 function startLevel(i: number): void {
   levelIndex = i; level = levelAt(i); round = 0; steelActive = false; levelStrikes = 0;
+  setStallLayout(level.stalls);
   sc.theme = themeFor(i);
   sc.posters = makePosters(i, level.urinals);
   sc.cos = cosmetics();
@@ -472,7 +473,7 @@ bindPointer(view, {
     if (y < URINAL_Y - 110 || y > FLOOR_Y + 30) return;
     const n = slots.length;
     const w = slotW(n);
-    for (let i = 0; i < n; i++) if (Math.abs(x - slotX(n, i)) < Math.max(w / 2 + 8, (W - 110) / n / 2)) { choose(phase === 'moving' && i === playerSlot ? 'stay' : i); return; }
+    for (let i = 0; i < n; i++) if (Math.abs(x - slotX(n, i)) < Math.max(w / 2 + 8, Math.abs(slotX(n, 1) - slotX(n, 0)) / 2)) { choose(phase === 'moving' && i === playerSlot ? 'stay' : i); return; }
   },
 });
 waitBtn.addEventListener('click', () => { unlockAudio(); choose('wait'); });
